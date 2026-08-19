@@ -1,0 +1,710 @@
+/* ==========================================================================
+   FOURGETHER — FurneeHome Design System & Styling
+   Đồng bộ 100% với CSS thuần (theme.css & global.css) của FurneeHome
+   ========================================================================== */
+
+:root {
+  --color-primary: #205c46;
+  --color-primary-dark: #173f31;
+  --color-accent: #d97745;
+  --color-background: #f7f5ef;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f0ede4;
+  --color-text: #1f2a24;
+  --color-muted: #6d756f;
+  --color-border: #d9ded9;
+  --radius-small: 6px;
+  --radius-medium: 12px;
+  --radius-large: 18px;
+  --shadow-card: 0 12px 30px rgb(29 48 38 / 10%);
+  --shadow-hover: 0 16px 36px rgb(29 48 38 / 15%);
+  --content-width: 1100px;
+  
+  --font-main: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+}
+
+/* Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ==========================================================================
+   HEADER (Phù hợp với site-header của FurneeHome)
+   ========================================================================== */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.brand-title {
+  font-family: var(--font-serif);
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  letter-spacing: -0.03em;
+}
+
+.brand-title span {
+  color: var(--color-accent);
+  font-family: var(--font-serif);
+}
+
+.brand-subtitle {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+
+.btn-icon {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  width: 42px;
+  height: 42px;
+  border-radius: 99px;
+  font-size: 1.15rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgb(29 48 38 / 5%);
+  transition: background .15s ease, transform .15s ease;
+}
+
+.btn-icon:hover {
+  background: #eae6dc;
+  transform: scale(1.04);
+}
+
+/* ==========================================================================
+   NAV TABS (Phong cách FurneeHome)
+   ========================================================================== */
+
+.nav-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 2px;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  position: relative;
+  transition: color .15s ease;
+}
+
+.nav-tab:hover {
+  color: var(--color-primary);
+}
+
+.nav-tab.active {
+  color: var(--color-primary-dark);
+}
+
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-accent);
+  border-radius: 3px 3px 0 0;
+}
+
+.tab-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: var(--color-accent);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+/* Tab Panels */
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-header {
+  margin-bottom: 24px;
+}
+
+.panel-header h2 {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.panel-header p {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   TAB 1: FLASHCARDS STYLING & 3D FLIP
+   ========================================================================== */
+
+.flashcard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.deck-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.deck-pill {
+  padding: 7px 14px;
+  border-radius: var(--radius-small);
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.deck-pill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.deck-pill.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 8px 14px;
+  border-radius: var(--radius-small);
+  min-width: 260px;
+}
+
+.search-box:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgb(32 92 70 / 10%);
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+}
+
+/* Progress bar */
+.progress-bar-container {
+  margin-bottom: 24px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+}
+
+.progress-track {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+/* 3D Flashcard Container */
+.flashcard-stage {
+  perspective: 1200px;
+  margin-bottom: 24px;
+}
+
+.flashcard {
+  width: 100%;
+  min-height: 420px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.flashcard.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flashcard-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--radius-medium);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: box-shadow .2s ease;
+}
+
+.flashcard:hover .flashcard-face {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Front Face */
+.flashcard-front {
+  background: linear-gradient(180deg, #ffffff 0%, #faf8f2 100%);
+  border-top: 4px solid var(--color-primary);
+}
+
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-deck-tag {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: var(--radius-small);
+  background: #edf3f0;
+  color: var(--color-primary);
+  border: 1px solid #c7dcd3;
+}
+
+.card-hint {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.card-question-box {
+  margin: auto 0;
+  padding: 20px 0;
+}
+
+.teacher-avatar {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-accent);
+  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.card-question-text {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--color-primary-dark);
+  font-family: var(--font-serif);
+}
+
+.card-bottom-hint {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/* Back Face */
+.flashcard-back {
+  transform: rotateY(180deg);
+  background: #ffffff;
+  border-top: 4px solid var(--color-accent);
+  overflow-y: auto;
+}
+
+.answer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.answer-summary {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--color-primary-dark);
+  line-height: 1.45;
+  border-left: 4px solid var(--color-primary);
+  padding-left: 14px;
+}
+
+.answer-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.detail-box {
+  background: #f7f5ef;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  padding: 12px 14px;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 4px;
+}
+
+.detail-code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-primary);
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.detail-text {
+  font-size: 0.88rem;
+  color: var(--color-text);
+}
+
+.key-points-box {
+  background: #edf3f0;
+  border-radius: var(--radius-small);
+  border: 1px solid #c7dcd3;
+  padding: 14px 16px;
+}
+
+.key-points-box .detail-label {
+  color: var(--color-primary);
+}
+
+.key-points-list {
+  list-style: none;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.key-points-list li {
+  font-size: 0.88rem;
+  position: relative;
+  padding-left: 18px;
+  color: var(--color-text);
+}
+
+.key-points-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+/* Flashcard Controls (Phù hợp nút của FurneeHome) */
+.flashcard-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.btn {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 750;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--radius-small);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform .15s ease, background .15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover {
+  background: #eae6dc;
+}
+
+.btn-success {
+  background: #edf3f0;
+  color: var(--color-primary);
+  border-color: #c7dcd3;
+}
+
+.btn-success:hover {
+  background: #dbeef5;
+}
+
+.btn-success.mastered {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+/* ==========================================================================
+   TAB 2: ROLES & CHECKLIST STYLING
+   ========================================================================== */
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.role-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-card);
+  border-top: 4px solid var(--role-color, var(--color-primary));
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.role-title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  line-height: 1.3;
+}
+
+.role-tagline {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+
+.member-assign-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f7f5ef;
+  padding: 8px 12px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--color-border);
+}
+
+.member-assign-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-muted);
+}
+
+.member-select {
+  background: transparent;
+  border: none;
+  color: var(--color-primary-dark);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.role-files-box {
+  font-size: 0.82rem;
+}
+
+.role-files-list {
+  list-style: none;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.role-files-list code {
+  font-family: var(--font-mono);
+  background: #f7f5ef;
+  border: 1px solid var(--color-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+}
+
+.checklist-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 8px;
+}
+
+.checklist-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.checklist-item input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checklist-item.done span {
+  text-decoration: line-through;
+  color: var(--color-muted);
+}
+
+/* Footer */
+.app-footer {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 16px 12px;
+  }
+  
+  .brand-title {
+    font-size: 1.4rem;
+  }
+  
+  .flashcard {
+    min-height: 480px;
+  }
+  
+  .flashcard-face {
+    padding: 20px;
+  }
+  
+  .card-question-text {
+    font-size: 1.25rem;
+  }
+}
