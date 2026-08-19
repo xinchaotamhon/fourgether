@@ -2,7 +2,7 @@ import { FLASHCARDS } from './data/flashcards.js';
 import { TEAM_MEMBERS, TEAM_ROLES } from './data/teamRoles.js';
 
 // ==========================================================================
-// STATE MANAGEMENT & LOCAL STORAGE (THEO TỪNG THÀNH VIÊN)
+// STATE MANAGEMENT & LOCAL STORAGE (ĐỘC LẬP THEO TỪNG THÀNH VIÊN + CRUD)
 // ==========================================================================
 
 const STORAGE_KEYS = {
@@ -12,18 +12,35 @@ const STORAGE_KEYS = {
   ROLE_ASSIGNMENTS: 'fourgether_role_assignments',
   ROLE_CHECKLIST: 'fourgether_role_checklist',
   MEMBER_NAMES: 'fourgether_member_names',
+  CUSTOM_CARDS: 'fourgether_custom_flashcards',
 };
+
+// Khởi tạo danh sách thẻ (Ưu tiên đọc từ LocalStorage nếu người dùng đã thêm/sửa/xóa)
+function loadInitialCards() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_CARDS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [...FLASHCARDS];
+}
 
 const state = {
   activeTab: 'tab-flashcards',
   activeMemberId: localStorage.getItem(STORAGE_KEYS.ACTIVE_MEMBER) || 'member-1',
   currentIndex: 0,
   isFlipped: false,
-  cards: [...FLASHCARDS],
+  cards: loadInitialCards(),
   roleAssignments: JSON.parse(localStorage.getItem(STORAGE_KEYS.ROLE_ASSIGNMENTS) || '{}'),
   roleChecklist: JSON.parse(localStorage.getItem(STORAGE_KEYS.ROLE_CHECKLIST) || '{}'),
   memberNames: JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMBER_NAMES) || '{}'),
 };
+
+function saveCardsToStorage() {
+  localStorage.setItem(STORAGE_KEYS.CUSTOM_CARDS, JSON.stringify(state.cards));
+}
 
 // Lấy danh sách thẻ đã thuộc của từng người
 function getMemberMasteredSet(memberId) {
@@ -47,6 +64,7 @@ const dom = {
   cardCounter: document.getElementById('cardCounter'),
   masteryCounter: document.getElementById('masteryCounter'),
   progressFill: document.getElementById('progressFill'),
+  flashcardStage: document.getElementById('flashcardStage'),
   flashcardElement: document.getElementById('flashcardElement'),
   memberPillsContainer: document.getElementById('memberPillsContainer'),
   currentUserName: document.getElementById('currentUserName'),
@@ -62,11 +80,27 @@ const dom = {
   cardDeckTagBack: document.getElementById('cardDeckTagBack'),
   cardAnswerText: document.getElementById('cardAnswerText'),
   
-  // Buttons
-  prevBtn: document.getElementById('prevBtn'),
-  flipBtn: document.getElementById('flipBtn'),
+  // Controls
+  prevCardBtn: document.getElementById('prevCardBtn'),
+  nextCardBtn: document.getElementById('nextCardBtn'),
   toggleMasteredBtn: document.getElementById('toggleMasteredBtn'),
-  nextBtn: document.getElementById('nextBtn'),
+  
+  // Toolbar CRUD buttons
+  addCardBtn: document.getElementById('addCardBtn'),
+  editCardBtn: document.getElementById('editCardBtn'),
+  deleteCardBtn: document.getElementById('deleteCardBtn'),
+  resetCardsBtn: document.getElementById('resetCardsBtn'),
+  
+  // CRUD Modal
+  cardModal: document.getElementById('cardModal'),
+  cardModalTitle: document.getElementById('cardModalTitle'),
+  closeCardModalBtn: document.getElementById('closeCardModalBtn'),
+  cancelCardModalBtn: document.getElementById('cancelCardModalBtn'),
+  cardForm: document.getElementById('cardForm'),
+  editCardId: document.getElementById('editCardId'),
+  cardCategoryInput: document.getElementById('cardCategoryInput'),
+  cardQuestionInput: document.getElementById('cardQuestionInput'),
+  cardAnswerInput: document.getElementById('cardAnswerInput'),
   
   // Roles Tab
   rolesContainer: document.getElementById('rolesContainer'),
@@ -81,12 +115,17 @@ function init() {
   initWelcomeModal();
   initMemberBar();
   initFlashcardEvents();
+  initTouchSwipeEvents();
+  initCrudEvents();
   renderFlashcard();
   renderRoles();
   initKeyboardShortcuts();
 }
 
-// Modal hỏi bạn là ai khi mới vào web
+// ==========================================================================
+// WELCOME ONBOARDING MODAL
+// ==========================================================================
+
 function initWelcomeModal() {
   dom.modalMemberGrid.innerHTML = TEAM_MEMBERS.map((m) => {
     const masteredCount = getMemberMasteredSet(m.id).size;
@@ -109,7 +148,6 @@ function initWelcomeModal() {
 
   dom.switchUserBtn.addEventListener('click', openWelcomeModal);
 
-  // Nếu người dùng chưa từng chọn bao giờ -> Mở Modal chào mừng
   const hasChosen = localStorage.getItem(STORAGE_KEYS.HAS_CHOSEN);
   if (!hasChosen) {
     openWelcomeModal();
@@ -117,6 +155,7 @@ function initWelcomeModal() {
 }
 
 function openWelcomeModal() {
+  initWelcomeModal(); // Cập nhật lại số lượng câu hỏi mới nhất
   dom.welcomeModal.classList.add('is-open');
 }
 
@@ -129,7 +168,6 @@ function selectMember(memberId) {
   state.activeMemberId = memberId;
   localStorage.setItem(STORAGE_KEYS.ACTIVE_MEMBER, memberId);
   
-  // Cập nhật giao diện thanh chọn người
   dom.memberPillsContainer.querySelectorAll('.member-pill').forEach((b) => {
     b.classList.toggle('active', b.dataset.memberId === memberId);
   });
@@ -146,7 +184,8 @@ function initTabs() {
       dom.tabPanels.forEach((p) => p.classList.remove('active'));
       
       tab.classList.add('active');
-      document.getElementById(targetTabId).classList.add('active');
+      const targetPanel = document.getElementById(targetTabId);
+      if (targetPanel) targetPanel.classList.add('active');
       state.activeTab = targetTabId;
     });
   });
@@ -172,7 +211,6 @@ function initMemberBar() {
   });
 }
 
-// Cập nhật số thẻ đã thuộc trên badge từng thành viên
 function updateMemberBadges() {
   TEAM_MEMBERS.forEach((m) => {
     const count = getMemberMasteredSet(m.id).size;
@@ -182,14 +220,27 @@ function updateMemberBadges() {
 }
 
 // ==========================================================================
-// FLASHCARDS MODULE (ĐỘC LẬP THEO TỪNG THÀNH VIÊN)
+// FLASHCARDS CORE MODULE
 // ==========================================================================
 
 function renderFlashcard() {
   const total = state.cards.length;
   dom.deckCountBadge.textContent = `${total} thẻ`;
 
-  if (total === 0) return;
+  if (total === 0) {
+    dom.cardDeckTag.textContent = '✨ Trống';
+    dom.cardQuestionText.textContent = 'Chưa có câu hỏi nào. Bấm "+ Thêm câu hỏi" để bắt đầu!';
+    dom.cardDeckTagBack.textContent = '✨ Trống';
+    dom.cardAnswerText.innerHTML = '<p>Hãy thêm câu hỏi mới để ôn tập.</p>';
+    dom.cardCounter.textContent = 'Thẻ 0 / 0';
+    dom.masteryCounter.textContent = 'Đã thuộc: 0 / 0';
+    dom.progressFill.style.width = '0%';
+    return;
+  }
+
+  // Đảm bảo currentIndex hợp lệ
+  if (state.currentIndex >= total) state.currentIndex = 0;
+  if (state.currentIndex < 0) state.currentIndex = total - 1;
 
   const card = state.cards[state.currentIndex];
   const activeMember = TEAM_MEMBERS.find((m) => m.id === state.activeMemberId) || TEAM_MEMBERS[0];
@@ -199,19 +250,19 @@ function renderFlashcard() {
   // Update Header Name
   dom.currentUserName.textContent = activeMember.defaultName;
 
-  // Front
-  dom.cardDeckTag.textContent = card.category;
+  // Front Face
+  dom.cardDeckTag.textContent = card.category || 'Nội thất & AI';
   dom.cardQuestionText.textContent = card.question;
 
-  // Back (Chỉ có đúng 1 đáp án duy nhất, rõ ràng)
-  dom.cardDeckTagBack.textContent = card.category;
+  // Back Face
+  dom.cardDeckTagBack.textContent = card.category || 'Đáp án';
   
-  const formattedAnswer = card.answer
+  const formattedAnswer = (card.answer || '')
     .split('\n\n')
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
     .join('');
   
-  dom.cardAnswerText.innerHTML = formattedAnswer;
+  dom.cardAnswerText.innerHTML = formattedAnswer || '<p>Chưa có câu trả lời.</p>';
 
   // Counters & Progress
   dom.cardCounter.textContent = `Thẻ ${state.currentIndex + 1} / ${total}`;
@@ -251,7 +302,6 @@ function prevCard() {
   renderFlashcard();
 }
 
-// Bấm đánh dấu đã thuộc (CHỈ ẢNH HƯỞNG TỚI THÀNH VIÊN ĐANG CHỌN)
 function toggleMastered() {
   if (state.cards.length === 0) return;
   const card = state.cards[state.currentIndex];
@@ -267,26 +317,82 @@ function toggleMastered() {
   renderFlashcard();
 }
 
+// ==========================================================================
+// TOUCH SWIPE GESTURES (VUỐT ĐỂ CHUYỂN CÂU TRÊN ĐIỆN THOẠI)
+// ==========================================================================
+
+function initTouchSwipeEvents() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let isSwiping = false;
+
+  const stage = dom.flashcardStage;
+
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchStartTime = Date.now();
+    isSwiping = true;
+  }, { passive: true });
+
+  stage.addEventListener('touchend', (e) => {
+    if (!isSwiping) return;
+    isSwiping = false;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    const deltaTime = Date.now() - touchStartTime;
+
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+
+    // Nếu vuốt ngang dứt khoát (> 40px và theo phương ngang nhiều hơn dọc)
+    if (absDeltaX > 40 && absDeltaX > absDeltaY * 1.2 && deltaTime < 600) {
+      if (deltaX < 0) {
+        // Vuốt sang trái -> Thẻ tiếp theo
+        nextCard();
+      } else {
+        // Vuốt sang phải -> Thẻ trước đó
+        prevCard();
+      }
+    } else if (absDeltaX < 12 && absDeltaY < 12) {
+      // Chạm nhẹ không di chuyển -> Lật thẻ
+      flipCard();
+    }
+  }, { passive: true });
+
+  // Click chuột trên Desktop
+  dom.flashcardElement.addEventListener('click', (e) => {
+    // Tránh click kép nếu vừa vuốt
+    if (Date.now() - touchStartTime < 300) return;
+    flipCard();
+  });
+
+  if (dom.prevCardBtn) dom.prevCardBtn.addEventListener('click', (e) => { e.stopPropagation(); prevCard(); });
+  if (dom.nextCardBtn) dom.nextCardBtn.addEventListener('click', (e) => { e.stopPropagation(); nextCard(); });
+}
+
 function initFlashcardEvents() {
-  dom.flashcardElement.addEventListener('click', flipCard);
-  dom.flipBtn.addEventListener('click', flipCard);
-  dom.nextBtn.addEventListener('click', nextCard);
-  dom.prevBtn.addEventListener('click', prevCard);
   dom.toggleMasteredBtn.addEventListener('click', toggleMastered);
 }
 
 function initKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
     if (state.activeTab !== 'tab-flashcards') return;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    // Không bắt phím nếu đang gõ trong modal CRUD
+    if (dom.cardModal.classList.contains('is-open')) return;
 
     if (e.code === 'Space') {
       e.preventDefault();
       flipCard();
-    } else if (e.code === 'ArrowRight') {
+    } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
       e.preventDefault();
       nextCard();
-    } else if (e.code === 'ArrowLeft') {
+    } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
       e.preventDefault();
       prevCard();
     }
@@ -294,7 +400,116 @@ function initKeyboardShortcuts() {
 }
 
 // ==========================================================================
-// TEAM ROLES MODULE
+// CRUD FLASHCARD MODULE (THÊM / SỬA / XÓA / RESET)
+// ==========================================================================
+
+function initCrudEvents() {
+  // Mở modal Thêm câu hỏi
+  dom.addCardBtn.addEventListener('click', () => {
+    dom.cardModalTitle.textContent = '➕ Thêm câu hỏi Flashcard mới';
+    dom.editCardId.value = '';
+    dom.cardCategoryInput.value = '🧠 Room Studio & AI';
+    dom.cardQuestionInput.value = '';
+    dom.cardAnswerInput.value = '';
+    openCardModal();
+  });
+
+  // Mở modal Sửa câu hỏi hiện tại
+  dom.editCardBtn.addEventListener('click', () => {
+    if (state.cards.length === 0) return;
+    const card = state.cards[state.currentIndex];
+    dom.cardModalTitle.textContent = '✏️ Chỉnh sửa câu hỏi Flashcard';
+    dom.editCardId.value = card.id;
+    dom.cardCategoryInput.value = card.category || '🧠 Room Studio & AI';
+    dom.cardQuestionInput.value = card.question || '';
+    dom.cardAnswerInput.value = card.answer || '';
+    openCardModal();
+  });
+
+  // Xóa câu hỏi hiện tại
+  dom.deleteCardBtn.addEventListener('click', () => {
+    if (state.cards.length === 0) return;
+    const card = state.cards[state.currentIndex];
+    const confirmDelete = confirm(`Bạn có chắc chắn muốn xóa câu hỏi này?\n\n"${card.question}"`);
+    if (!confirmDelete) return;
+
+    state.cards.splice(state.currentIndex, 1);
+    saveCardsToStorage();
+    if (state.currentIndex >= state.cards.length && state.cards.length > 0) {
+      state.currentIndex = state.cards.length - 1;
+    }
+    state.isFlipped = false;
+    dom.flashcardElement.classList.remove('is-flipped');
+    renderFlashcard();
+  });
+
+  // Reset về 32 câu mặc định
+  dom.resetCardsBtn.addEventListener('click', () => {
+    const confirmReset = confirm('Bạn có muốn khôi phục lại trọn bộ 32 câu hỏi mặc định của đồ án FurneeHome không?');
+    if (!confirmReset) return;
+
+    state.cards = [...FLASHCARDS];
+    saveCardsToStorage();
+    state.currentIndex = 0;
+    state.isFlipped = false;
+    dom.flashcardElement.classList.remove('is-flipped');
+    renderFlashcard();
+  });
+
+  // Đóng modal
+  dom.closeCardModalBtn.addEventListener('click', closeCardModal);
+  dom.cancelCardModalBtn.addEventListener('click', closeCardModal);
+
+  // Submit Form Lưu Thẻ
+  dom.cardForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = dom.editCardId.value;
+    const category = dom.cardCategoryInput.value.trim();
+    const question = dom.cardQuestionInput.value.trim();
+    const answer = dom.cardAnswerInput.value.trim();
+
+    if (!question || !answer) {
+      alert('Vui lòng nhập đầy đủ câu hỏi và câu trả lời!');
+      return;
+    }
+
+    if (id) {
+      // Update
+      const index = state.cards.findIndex((c) => c.id === id);
+      if (index !== -1) {
+        state.cards[index] = { ...state.cards[index], category, question, answer };
+      }
+    } else {
+      // Create
+      const newCard = {
+        id: `custom-card-${Date.now()}`,
+        category,
+        question,
+        answer,
+        fileRef: '',
+      };
+      state.cards.push(newCard);
+      state.currentIndex = state.cards.length - 1;
+    }
+
+    saveCardsToStorage();
+    closeCardModal();
+    state.isFlipped = false;
+    dom.flashcardElement.classList.remove('is-flipped');
+    renderFlashcard();
+  });
+}
+
+function openCardModal() {
+  dom.cardModal.classList.add('is-open');
+}
+
+function closeCardModal() {
+  dom.cardModal.classList.remove('is-open');
+}
+
+// ==========================================================================
+// TEAM ROLES & CHECKLIST MODULE
 // ==========================================================================
 
 function renderRoles() {
@@ -381,11 +596,5 @@ function renderRoles() {
   });
 }
 
-function getMemberName(memberId) {
-  if (state.memberNames[memberId]) return state.memberNames[memberId];
-  const member = TEAM_MEMBERS.find((m) => m.id === memberId);
-  return member ? member.defaultName : 'Thành viên';
-}
-
-// Run on load
+// Khởi chạy ứng dụng
 document.addEventListener('DOMContentLoaded', init);

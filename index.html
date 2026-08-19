@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Fourgether 🎓 — Ôn tập Source Code FurneeHome</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
     <header class="app-header">
       <div class="brand-block">
         <h1 class="brand-title">Fourgether 🎓 <span>FurneeHome</span></h1>
-        <p class="brand-subtitle">Hỏi đáp vị trí Source Code & Phân chia công việc 4 thành viên</p>
+        <p class="brand-subtitle">Hỏi đáp Source Code & Nhiệm vụ 4 thành viên</p>
       </div>
       <div class="user-greeting-box">
         <span class="user-greeting-text">Đang học: <strong id="currentUserName">Hiệp</strong> 👋</span>
@@ -32,7 +32,7 @@
       </button>
       <button class="nav-tab" data-tab="tab-roles">
         <span class="tab-icon">🛒</span>
-        <span class="tab-text">2. Nhiệm vụ lấy dữ liệu Shopee</span>
+        <span class="tab-text">2. Nhiệm vụ cào Shopee</span>
       </button>
     </nav>
 
@@ -46,37 +46,50 @@
         <div class="member-bar">
           <span class="member-bar-label">👤 Chọn người học:</span>
           <div class="member-pills" id="memberPillsContainer">
-            <!-- Rendered by JS: Hiệp, Phúc, Triệu, Dũng -->
+            <!-- Rendered by JS: Hiệp, Phúc, Triều, Dũng -->
+          </div>
+        </div>
+
+        <!-- Action bar: Thêm câu mới & Khôi phục -->
+        <div class="flashcard-toolbar">
+          <div class="toolbar-stats">
+            <span id="cardCounter" class="stat-pill">Thẻ 1 / 32</span>
+            <span id="masteryCounter" class="stat-pill stat-mastery">Hiệp đã thuộc: 0 / 32</span>
+          </div>
+          <div class="toolbar-actions">
+            <button id="addCardBtn" class="btn-tool btn-tool-add">➕ Thêm câu hỏi</button>
+            <button id="editCardBtn" class="btn-tool">✏️ Sửa câu này</button>
+            <button id="deleteCardBtn" class="btn-tool btn-tool-del">🗑️ Xóa</button>
+            <button id="resetCardsBtn" class="btn-tool" title="Khôi phục 32 câu mặc định">🔄 Reset</button>
           </div>
         </div>
 
         <!-- Progress bar cá nhân -->
         <div class="progress-bar-container">
-          <div class="progress-info">
-            <span id="cardCounter">Thẻ 1 / 32</span>
-            <span id="masteryCounter">Hiệp đã thuộc: 0 / 32</span>
-          </div>
           <div class="progress-track">
             <div class="progress-fill" id="progressFill" style="width: 3%;"></div>
           </div>
         </div>
 
-        <!-- 3D Flashcard Stage -->
-        <div class="flashcard-stage">
+        <!-- 3D Flashcard Stage (Hỗ trợ vuốt trên điện thoại) -->
+        <div class="flashcard-stage" id="flashcardStage">
+          <!-- Floating nav arrows for desktop -->
+          <button class="stage-nav-btn nav-prev" id="prevCardBtn" aria-label="Thẻ trước">‹</button>
+          <button class="stage-nav-btn nav-next" id="nextCardBtn" aria-label="Thẻ tiếp">›</button>
+
           <div class="flashcard" id="flashcardElement">
             
             <!-- Mặt trước (Front) -->
             <div class="flashcard-face flashcard-front">
               <div class="card-meta">
                 <span class="card-deck-tag" id="cardDeckTag">🧠 Room Studio & AI</span>
-                <span class="card-hint">💡 Bấm vào thẻ để xem vị trí file & đáp án</span>
+                <span class="card-tap-badge">👆 Chạm để lật đáp án</span>
               </div>
               <div class="card-question-box">
-                <div class="teacher-avatar">👨‍🏫 Giảng viên hỏi:</div>
                 <h2 class="card-question-text" id="cardQuestionText">Đang tải câu hỏi...</h2>
               </div>
-              <div class="card-bottom-hint">
-                <span>Space: Lật thẻ | ⬅️ ➡️: Chuyển câu</span>
+              <div class="card-footer-tip">
+                <span>👈 Vuốt sang trái / phải để chuyển câu 👉</span>
               </div>
             </div>
 
@@ -84,7 +97,7 @@
             <div class="flashcard-face flashcard-back">
               <div class="card-meta">
                 <span class="card-deck-tag" id="cardDeckTagBack">🎯 Vị trí Code & Đáp án</span>
-                <span class="card-hint">💡 Bấm để lật lại câu hỏi</span>
+                <span class="card-tap-badge">👆 Chạm để quay lại câu hỏi</span>
               </div>
               
               <div class="answer-content">
@@ -93,20 +106,17 @@
                 </div>
               </div>
 
-              <div class="card-bottom-hint">
-                <span>Space: Lật thẻ | ⬅️ ➡️: Chuyển câu</span>
+              <div class="card-footer-tip">
+                <span>👈 Vuốt sang trái / phải để chuyển câu 👉</span>
               </div>
             </div>
 
           </div>
         </div>
 
-        <!-- Controls -->
+        <!-- Controls: Chỉ giữ nút Đã thuộc gọn gàng -->
         <div class="flashcard-controls">
-          <button id="prevBtn" class="btn btn-secondary">⬅️ Thẻ trước</button>
-          <button id="flipBtn" class="btn btn-primary">🔄 Lật thẻ</button>
-          <button id="toggleMasteredBtn" class="btn btn-success">⭐ Đánh dấu đã thuộc</button>
-          <button id="nextBtn" class="btn btn-secondary">Thẻ tiếp ➡️</button>
+          <button id="toggleMasteredBtn" class="btn btn-mastery">⭐ Đánh dấu đã thuộc</button>
         </div>
       </section>
 
@@ -129,7 +139,7 @@
     </footer>
   </div>
 
-  <!-- WELCOME MODAL (CHỌN BẠN LÀ AI KHI MỚI VÀO) -->
+  <!-- WELCOME MODAL (CHỌN BẠN LÀ AI KHI MỚI VÀO - TỐI ƯU CUỘN MOBILE) -->
   <div class="modal-backdrop" id="welcomeModal">
     <div class="welcome-card">
       <div class="welcome-header">
@@ -141,6 +151,43 @@
       <div class="member-select-grid" id="modalMemberGrid">
         <!-- Rendered by JS -->
       </div>
+    </div>
+  </div>
+
+  <!-- CRUD MODAL: THÊM / SỬA CÂU HỎI FLASHCARD -->
+  <div class="modal-backdrop" id="cardModal">
+    <div class="crud-modal-card">
+      <div class="modal-header">
+        <h3 id="cardModalTitle">➕ Thêm câu hỏi Flashcard mới</h3>
+        <button class="btn-close-modal" id="closeCardModalBtn">&times;</button>
+      </div>
+      <form id="cardForm" class="crud-form">
+        <input type="hidden" id="editCardId" value="">
+        <div class="form-group">
+          <label for="cardCategoryInput">🏷️ Danh mục / Chủ đề:</label>
+          <select id="cardCategoryInput" class="form-control" required>
+            <option value="🧠 Room Studio & AI">🧠 Room Studio & AI</option>
+            <option value="🛠️ Backend & MongoDB">🛠️ Backend & MongoDB</option>
+            <option value="🎨 Frontend React & CSS">🎨 Frontend React & CSS</option>
+            <option value="📦 Shopee Tools & Data">📦 Shopee Tools & Data</option>
+            <option value="🏛️ Kiến trúc & README">🏛️ Kiến trúc & README</option>
+            <option value="🎯 Vấn đáp chuyên sâu">🎯 Vấn đáp chuyên sâu</option>
+            <option value="✨ Câu hỏi tùy chỉnh">✨ Câu hỏi tùy chỉnh</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="cardQuestionInput">❓ Nội dung câu hỏi:</label>
+          <textarea id="cardQuestionInput" class="form-control" rows="3" placeholder="Ví dụ: File nào xử lý API lấy danh sách sản phẩm?" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="cardAnswerInput">💡 Câu trả lời (Vị trí file & code):</label>
+          <textarea id="cardAnswerInput" class="form-control" rows="5" placeholder="Ví dụ: Vị trí: server/src/controllers/productController.js&#10;&#10;Chi tiết: Hàm getProducts() truy vấn trực tiếp Product.find()..." required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelCardModalBtn">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="saveCardBtn">💾 Lưu câu hỏi</button>
+        </div>
+      </form>
     </div>
   </div>
 
