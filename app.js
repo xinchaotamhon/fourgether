@@ -1,4 +1,4 @@
-import { FLASHCARD_DECKS, FLASHCARDS } from './data/flashcards.js';
+import { FLASHCARDS } from './data/flashcards.js';
 import { TEAM_MEMBERS, TEAM_ROLES } from './data/teamRoles.js';
 
 // ==========================================================================
@@ -6,7 +6,6 @@ import { TEAM_MEMBERS, TEAM_ROLES } from './data/teamRoles.js';
 // ==========================================================================
 
 const STORAGE_KEYS = {
-  THEME: 'fourgether_theme',
   MASTERED_CARDS: 'fourgether_mastered_cards',
   ROLE_ASSIGNMENTS: 'fourgether_role_assignments',
   ROLE_CHECKLIST: 'fourgether_role_checklist',
@@ -15,8 +14,6 @@ const STORAGE_KEYS = {
 
 const state = {
   activeTab: 'tab-flashcards',
-  currentDeckId: 'all',
-  searchQuery: '',
   currentIndex: 0,
   isFlipped: false,
   cards: [...FLASHCARDS],
@@ -33,8 +30,6 @@ const state = {
 const dom = {
   navTabs: document.querySelectorAll('.nav-tab'),
   tabPanels: document.querySelectorAll('.tab-panel'),
-  deckFilterContainer: document.getElementById('deckFilterContainer'),
-  searchInput: document.getElementById('searchInput'),
   deckCountBadge: document.getElementById('deckCountBadge'),
   cardCounter: document.getElementById('cardCounter'),
   masteryCounter: document.getElementById('masteryCounter'),
@@ -47,17 +42,11 @@ const dom = {
   
   // Card Back
   cardDeckTagBack: document.getElementById('cardDeckTagBack'),
-  cardDifficulty: document.getElementById('cardDifficulty'),
-  cardSummary: document.getElementById('cardSummary'),
-  cardSourceLocation: document.getElementById('cardSourceLocation'),
-  cardWhatIfRemoved: document.getElementById('cardWhatIfRemoved'),
-  cardHowToExtend: document.getElementById('cardHowToExtend'),
-  cardKeyPoints: document.getElementById('cardKeyPoints'),
+  cardAnswerText: document.getElementById('cardAnswerText'),
   
   // Buttons
   prevBtn: document.getElementById('prevBtn'),
   flipBtn: document.getElementById('flipBtn'),
-  shuffleBtn: document.getElementById('shuffleBtn'),
   toggleMasteredBtn: document.getElementById('toggleMasteredBtn'),
   nextBtn: document.getElementById('nextBtn'),
   
@@ -71,7 +60,6 @@ const dom = {
 
 function init() {
   initTabs();
-  initDeckFilters();
   initFlashcardEvents();
   renderFlashcard();
   renderRoles();
@@ -94,93 +82,37 @@ function initTabs() {
 }
 
 // ==========================================================================
-// FLASHCARDS MODULE
+// FLASHCARDS MODULE (CỰC KỲ ĐƠN GIẢN & TRỰC DIỆN)
 // ==========================================================================
-
-function initDeckFilters() {
-  const allDecks = [{ id: 'all', name: '✨ Tất cả câu hỏi', color: '#6366f1' }, ...FLASHCARD_DECKS];
-  
-  dom.deckFilterContainer.innerHTML = allDecks.map((deck) => `
-    <button class="deck-pill ${state.currentDeckId === deck.id ? 'active' : ''}" data-deck="${deck.id}">
-      ${deck.name}
-    </button>
-  `).join('');
-
-  dom.deckFilterContainer.addEventListener('click', (e) => {
-    const pill = e.target.closest('.deck-pill');
-    if (!pill) return;
-    state.currentDeckId = pill.dataset.deck;
-    document.querySelectorAll('.deck-pill').forEach((p) => p.classList.remove('active'));
-    pill.classList.add('active');
-    filterCards();
-  });
-
-  dom.searchInput.addEventListener('input', (e) => {
-    state.searchQuery = e.target.value.toLowerCase().trim();
-    filterCards();
-  });
-}
-
-function filterCards() {
-  let filtered = [...FLASHCARDS];
-
-  if (state.currentDeckId !== 'all') {
-    filtered = filtered.filter((c) => c.deckId === state.currentDeckId);
-  }
-
-  if (state.searchQuery) {
-    filtered = filtered.filter((c) => 
-      c.question.toLowerCase().includes(state.searchQuery) ||
-      c.answer.summary.toLowerCase().includes(state.searchQuery) ||
-      c.answer.sourceLocation.toLowerCase().includes(state.searchQuery)
-    );
-  }
-
-  state.cards = filtered;
-  state.currentIndex = 0;
-  state.isFlipped = false;
-  dom.flashcardElement.classList.remove('is-flipped');
-  renderFlashcard();
-}
 
 function renderFlashcard() {
   const total = state.cards.length;
-  dom.deckCountBadge.textContent = `${FLASHCARDS.length} thẻ`;
+  dom.deckCountBadge.textContent = `${total} thẻ`;
 
-  if (total === 0) {
-    dom.cardQuestionText.textContent = 'Không tìm thấy câu hỏi nào phù hợp với từ khóa.';
-    dom.cardDeckTag.textContent = '🔍 Trống';
-    dom.cardCounter.textContent = '0 / 0';
-    dom.progressFill.style.width = '0%';
-    return;
-  }
+  if (total === 0) return;
 
   const card = state.cards[state.currentIndex];
-  const deck = FLASHCARD_DECKS.find((d) => d.id === card.deckId);
   const isMastered = state.masteredCardIds.has(card.id);
 
   // Front
-  dom.cardDeckTag.textContent = deck ? deck.name : 'Chung';
-  dom.cardDeckTag.style.borderColor = deck ? deck.color : '#6366f1';
+  dom.cardDeckTag.textContent = card.category;
   dom.cardQuestionText.textContent = card.question;
 
-  // Back
-  dom.cardDeckTagBack.textContent = deck ? deck.name : 'Chung';
-  dom.cardDifficulty.textContent = `Độ khó: ${card.answer.difficulty}`;
-  dom.cardSummary.textContent = card.answer.summary;
-  dom.cardSourceLocation.textContent = card.answer.sourceLocation;
-  dom.cardWhatIfRemoved.textContent = card.answer.whatIfRemoved;
-  dom.cardHowToExtend.textContent = card.answer.howToExtend;
-
-  dom.cardKeyPoints.innerHTML = card.answer.keyPoints.map((point) => `
-    <li>${point}</li>
-  `).join('');
+  // Back (Chỉ có đúng 1 đáp án duy nhất, rõ ràng)
+  dom.cardDeckTagBack.textContent = card.category;
+  
+  // Format formatted text with linebreaks
+  const formattedAnswer = card.answer
+    .split('\n\n')
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+  
+  dom.cardAnswerText.innerHTML = formattedAnswer;
 
   // Counters & Progress
   dom.cardCounter.textContent = `Thẻ ${state.currentIndex + 1} / ${total}`;
   const masteredCount = Array.from(state.masteredCardIds).filter((id) => FLASHCARDS.some((c) => c.id === id)).length;
-  const pct = Math.round((masteredCount / FLASHCARDS.length) * 100);
-  dom.masteryCounter.textContent = `Đã thuộc: ${masteredCount} / ${FLASHCARDS.length} (${pct}%)`;
+  dom.masteryCounter.textContent = `Đã thuộc: ${masteredCount} / ${total}`;
   dom.progressFill.style.width = `${((state.currentIndex + 1) / total) * 100}%`;
 
   // Mastery button
@@ -214,14 +146,6 @@ function prevCard() {
   renderFlashcard();
 }
 
-function shuffleCards() {
-  state.cards.sort(() => Math.random() - 0.5);
-  state.currentIndex = 0;
-  state.isFlipped = false;
-  dom.flashcardElement.classList.remove('is-flipped');
-  renderFlashcard();
-}
-
 function toggleMastered() {
   if (state.cards.length === 0) return;
   const card = state.cards[state.currentIndex];
@@ -239,14 +163,13 @@ function initFlashcardEvents() {
   dom.flipBtn.addEventListener('click', flipCard);
   dom.nextBtn.addEventListener('click', nextCard);
   dom.prevBtn.addEventListener('click', prevCard);
-  dom.shuffleBtn.addEventListener('click', shuffleCards);
   dom.toggleMasteredBtn.addEventListener('click', toggleMastered);
 }
 
 function initKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
     if (state.activeTab !== 'tab-flashcards') return;
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
     if (e.code === 'Space') {
       e.preventDefault();
@@ -268,7 +191,6 @@ function initKeyboardShortcuts() {
 function renderRoles() {
   dom.rolesContainer.innerHTML = TEAM_ROLES.map((role) => {
     const assignedId = state.roleAssignments[role.id] || role.assignedMemberId;
-    const memberName = getMemberName(assignedId);
 
     return `
       <div class="role-card" style="--role-color: ${role.color};">
@@ -317,7 +239,7 @@ function renderRoles() {
     `;
   }).join('');
 
-  // Attach event listeners for role assignments & checkboxes
+  // Event listeners
   dom.rolesContainer.querySelectorAll('.member-select').forEach((select) => {
     select.addEventListener('change', (e) => {
       const roleId = e.target.dataset.roleId;

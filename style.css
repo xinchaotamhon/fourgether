@@ -18,10 +18,9 @@
   --radius-large: 18px;
   --shadow-card: 0 12px 30px rgb(29 48 38 / 10%);
   --shadow-hover: 0 16px 36px rgb(29 48 38 / 15%);
-  --content-width: 1100px;
+  --content-width: 960px;
   
-  --font-main: 'Be Vietnam Pro', Inter, system-ui, -apple-system, sans-serif;
-  --font-serif: 'Be Vietnam Pro', sans-serif;
+  --font-main: 'Be Vietnam Pro', Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: 'JetBrains Mono', Consolas, monospace;
 }
 
@@ -173,82 +172,17 @@ body {
 }
 
 /* ==========================================================================
-   TAB 1: FLASHCARDS STYLING & 3D FLIP
+   TAB 1: FLASHCARDS (3D FLIP CARD)
    ========================================================================== */
 
-.flashcard-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.deck-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.deck-pill {
-  padding: 7px 14px;
-  border-radius: var(--radius-small);
-  font-size: 0.82rem;
-  font-weight: 700;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-muted);
-  cursor: pointer;
-  transition: all .15s ease;
-}
-
-.deck-pill:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.deck-pill.active {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  padding: 8px 14px;
-  border-radius: var(--radius-small);
-  min-width: 260px;
-}
-
-.search-box:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgb(32 92 70 / 10%);
-}
-
-.search-box input {
-  background: transparent;
-  border: none;
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 0.85rem;
-  outline: none;
-  width: 100%;
-}
-
-/* Progress bar */
 .progress-bar-container {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .progress-info {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--color-muted);
   margin-bottom: 8px;
@@ -268,7 +202,7 @@ body {
   transition: width 0.3s ease;
 }
 
-/* 3D Flashcard Container */
+/* 3D Flashcard Stage */
 .flashcard-stage {
   perspective: 1200px;
   margin-bottom: 24px;
@@ -276,7 +210,7 @@ body {
 
 .flashcard {
   width: 100%;
-  min-height: 420px;
+  min-height: 380px;
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -296,7 +230,7 @@ body {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: var(--radius-medium);
-  padding: 32px;
+  padding: 36px 32px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -313,7 +247,7 @@ body {
 /* Front Face */
 .flashcard-front {
   background: linear-gradient(180deg, #ffffff 0%, #faf8f2 100%);
-  border-top: 4px solid var(--color-primary);
+  border-top: 5px solid var(--color-primary);
 }
 
 .card-meta {
@@ -323,9 +257,9 @@ body {
 }
 
 .card-deck-tag {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: var(--radius-small);
   background: #edf3f0;
   color: var(--color-primary);
@@ -333,7 +267,7 @@ body {
 }
 
 .card-hint {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--color-muted);
 }
 
@@ -357,111 +291,54 @@ body {
 .card-question-text {
   font-size: 1.55rem;
   font-weight: 800;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--color-primary-dark);
   font-family: var(--font-main);
   letter-spacing: -0.01em;
 }
 
 .card-bottom-hint {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--color-muted);
   text-align: center;
 }
 
-/* Back Face */
+/* Back Face (Đáp án gọn 1 khối duy nhất) */
 .flashcard-back {
   transform: rotateY(180deg);
   background: #ffffff;
-  border-top: 4px solid var(--color-accent);
+  border-top: 5px solid var(--color-accent);
   overflow-y: auto;
 }
 
 .answer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 12px 0;
+  margin: auto 0;
+  padding: 16px 0;
 }
 
-.answer-summary {
-  font-size: 1.05rem;
-  font-weight: 750;
-  color: var(--color-primary-dark);
-  line-height: 1.5;
-  border-left: 4px solid var(--color-primary);
-  padding-left: 14px;
-}
-
-.answer-details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
-}
-
-.detail-box {
+.single-answer-box {
   background: #f7f5ef;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-small);
-  padding: 12px 14px;
+  padding: 22px 24px;
+  border-left: 5px solid var(--color-primary);
 }
 
-.detail-label {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--color-muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-bottom: 4px;
-}
-
-.detail-code {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--color-primary);
-  font-weight: 700;
-  word-break: break-all;
-}
-
-.detail-text {
-  font-size: 0.88rem;
+.single-answer-box p {
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+  line-height: 1.6;
   color: var(--color-text);
-  line-height: 1.5;
 }
 
-.key-points-box {
-  background: #edf3f0;
-  border-radius: var(--radius-small);
-  border: 1px solid #c7dcd3;
-  padding: 14px 16px;
-}
-
-.key-points-box .detail-label {
-  color: var(--color-primary);
-}
-
-.key-points-list {
-  list-style: none;
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.key-points-list li {
-  font-size: 0.88rem;
-  position: relative;
-  padding-left: 18px;
-  color: var(--color-text);
-  line-height: 1.5;
-}
-
-.key-points-list li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: var(--color-primary);
+.single-answer-box p:first-child {
   font-weight: 800;
+  color: var(--color-primary-dark);
+  font-size: 1.12rem;
+}
+
+.single-answer-box p:last-child {
+  margin-bottom: 0;
 }
 
 /* Flashcard Controls */
@@ -475,10 +352,10 @@ body {
 
 .btn {
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 750;
   min-height: 44px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   border-radius: var(--radius-small);
   border: 1px solid transparent;
   cursor: pointer;
@@ -679,11 +556,11 @@ body {
   }
   
   .flashcard {
-    min-height: 480px;
+    min-height: 420px;
   }
   
   .flashcard-face {
-    padding: 20px;
+    padding: 24px 20px;
   }
   
   .card-question-text {

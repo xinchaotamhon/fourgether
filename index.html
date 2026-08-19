@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fourgether 🎓 — Ôn tập & Chia việc nhóm FurneeHome</title>
+  <title>Fourgether 🎓 — Ôn tập Source Code FurneeHome</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -15,16 +15,16 @@
     <header class="app-header">
       <div class="brand-block">
         <h1 class="brand-title">Fourgether 🎓 <span>FurneeHome</span></h1>
-        <p class="brand-subtitle">Ôn tập hiểu toàn bộ dự án & Phân chia công việc cho 4 thành viên</p>
+        <p class="brand-subtitle">Hỏi đáp vị trí Source Code & Phân chia công việc 4 thành viên</p>
       </div>
     </header>
 
-    <!-- 2 Navigation Tabs Only -->
+    <!-- 2 Navigation Tabs -->
     <nav class="nav-tabs">
       <button class="nav-tab active" data-tab="tab-flashcards">
         <span class="tab-icon">🗂️</span>
-        <span class="tab-text">1. Flashcards Ôn tập dự án</span>
-        <span class="tab-badge" id="deckCountBadge">10 thẻ</span>
+        <span class="tab-text">1. Flashcards Source Code</span>
+        <span class="tab-badge" id="deckCountBadge">25 thẻ</span>
       </button>
       <button class="nav-tab" data-tab="tab-roles">
         <span class="tab-icon">👥</span>
@@ -37,25 +37,14 @@
       
       <!-- PHẦN 1: FLASHCARDS -->
       <section id="tab-flashcards" class="tab-panel active">
-        <!-- Deck Filter & Search -->
-        <div class="flashcard-toolbar">
-          <div class="deck-filters" id="deckFilterContainer">
-            <!-- Rendered by JS -->
-          </div>
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" placeholder="Tìm câu hỏi, từ khóa, tên file...">
-          </div>
-        </div>
-
         <!-- Progress bar -->
         <div class="progress-bar-container">
           <div class="progress-info">
-            <span id="cardCounter">Thẻ 1 / 10</span>
-            <span id="masteryCounter">Đã thuộc: 0 / 10</span>
+            <span id="cardCounter">Thẻ 1 / 25</span>
+            <span id="masteryCounter">Đã thuộc: 0 / 25</span>
           </div>
           <div class="progress-track">
-            <div class="progress-fill" id="progressFill" style="width: 10%;"></div>
+            <div class="progress-fill" id="progressFill" style="width: 4%;"></div>
           </div>
         </div>
 
@@ -66,11 +55,11 @@
             <!-- Mặt trước (Front) -->
             <div class="flashcard-face flashcard-front">
               <div class="card-meta">
-                <span class="card-deck-tag" id="cardDeckTag">🧠 AI Room Studio</span>
-                <span class="card-hint">💡 Bấm vào thẻ để lật xem đáp án</span>
+                <span class="card-deck-tag" id="cardDeckTag">🧠 Room Studio & AI</span>
+                <span class="card-hint">💡 Bấm vào thẻ để xem vị trí file & đáp án</span>
               </div>
               <div class="card-question-box">
-                <div class="teacher-avatar">❓ Câu hỏi:</div>
+                <div class="teacher-avatar">👨‍🏫 Giảng viên hỏi:</div>
                 <h2 class="card-question-text" id="cardQuestionText">Đang tải câu hỏi...</h2>
               </div>
               <div class="card-bottom-hint">
@@ -81,34 +70,18 @@
             <!-- Mặt sau (Back) -->
             <div class="flashcard-face flashcard-back">
               <div class="card-meta">
-                <span class="card-deck-tag" id="cardDeckTagBack">🎯 Đáp án</span>
-                <span class="card-difficulty" id="cardDifficulty">File code</span>
+                <span class="card-deck-tag" id="cardDeckTagBack">🎯 Vị trí Code & Đáp án</span>
+                <span class="card-hint">💡 Bấm để lật lại câu hỏi</span>
               </div>
               
               <div class="answer-content">
-                <div class="answer-summary" id="cardSummary">...</div>
-                
-                <div class="answer-details-grid">
-                  <div class="detail-box source-box">
-                    <div class="detail-label">📂 File Source Code:</div>
-                    <code class="detail-code" id="cardSourceLocation">...</code>
-                  </div>
-                  
-                  <div class="detail-box alert-box">
-                    <div class="detail-label">⚠️ Bỏ đi thì sao?</div>
-                    <div class="detail-text" id="cardWhatIfRemoved">...</div>
-                  </div>
-
-                  <div class="detail-box extend-box">
-                    <div class="detail-label">🚀 Thêm mới thì sao?</div>
-                    <div class="detail-text" id="cardHowToExtend">...</div>
-                  </div>
+                <div class="single-answer-box" id="cardAnswerText">
+                  Đang tải đáp án...
                 </div>
+              </div>
 
-                <div class="key-points-box">
-                  <div class="detail-label">📌 Ý chính cần nhớ:</div>
-                  <ul class="key-points-list" id="cardKeyPoints"></ul>
-                </div>
+              <div class="card-bottom-hint">
+                <span>Space: Lật thẻ | ⬅️ ➡️: Chuyển câu</span>
               </div>
             </div>
 
