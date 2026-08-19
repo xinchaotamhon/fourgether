@@ -2,11 +2,13 @@ import { FLASHCARDS } from './data/flashcards.js';
 import { TEAM_MEMBERS, TEAM_ROLES } from './data/teamRoles.js';
 
 // ==========================================================================
-// STATE MANAGEMENT & LOCAL STORAGE
+// STATE MANAGEMENT & LOCAL STORAGE (THEO TỪNG THÀNH VIÊN)
 // ==========================================================================
 
 const STORAGE_KEYS = {
-  MASTERED_CARDS: 'fourgether_mastered_cards',
+  HAS_CHOSEN: 'fourgether_has_chosen_member',
+  ACTIVE_MEMBER: 'fourgether_active_member_id',
+  MASTERED_PREFIX: 'fourgether_mastered_', // fourgether_mastered_member-1
   ROLE_ASSIGNMENTS: 'fourgether_role_assignments',
   ROLE_CHECKLIST: 'fourgether_role_checklist',
   MEMBER_NAMES: 'fourgether_member_names',
@@ -14,14 +16,25 @@ const STORAGE_KEYS = {
 
 const state = {
   activeTab: 'tab-flashcards',
+  activeMemberId: localStorage.getItem(STORAGE_KEYS.ACTIVE_MEMBER) || 'member-1',
   currentIndex: 0,
   isFlipped: false,
   cards: [...FLASHCARDS],
-  masteredCardIds: new Set(JSON.parse(localStorage.getItem(STORAGE_KEYS.MASTERED_CARDS) || '[]')),
   roleAssignments: JSON.parse(localStorage.getItem(STORAGE_KEYS.ROLE_ASSIGNMENTS) || '{}'),
   roleChecklist: JSON.parse(localStorage.getItem(STORAGE_KEYS.ROLE_CHECKLIST) || '{}'),
   memberNames: JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMBER_NAMES) || '{}'),
 };
+
+// Lấy danh sách thẻ đã thuộc của từng người
+function getMemberMasteredSet(memberId) {
+  const raw = localStorage.getItem(`${STORAGE_KEYS.MASTERED_PREFIX}${memberId}`);
+  return new Set(JSON.parse(raw || '[]'));
+}
+
+// Lưu danh sách thẻ đã thuộc của từng người
+function saveMemberMasteredSet(memberId, set) {
+  localStorage.setItem(`${STORAGE_KEYS.MASTERED_PREFIX}${memberId}`, JSON.stringify(Array.from(set)));
+}
 
 // ==========================================================================
 // DOM ELEMENTS
@@ -35,6 +48,11 @@ const dom = {
   masteryCounter: document.getElementById('masteryCounter'),
   progressFill: document.getElementById('progressFill'),
   flashcardElement: document.getElementById('flashcardElement'),
+  memberPillsContainer: document.getElementById('memberPillsContainer'),
+  currentUserName: document.getElementById('currentUserName'),
+  switchUserBtn: document.getElementById('switchUserBtn'),
+  welcomeModal: document.getElementById('welcomeModal'),
+  modalMemberGrid: document.getElementById('modalMemberGrid'),
   
   // Card Front
   cardDeckTag: document.getElementById('cardDeckTag'),
@@ -60,10 +78,72 @@ const dom = {
 
 function init() {
   initTabs();
+  initWelcomeModal();
+  initMemberBar();
   initFlashcardEvents();
   renderFlashcard();
   renderRoles();
   initKeyboardShortcuts();
+}
+
+// Modal hỏi bạn là ai khi mới vào web
+function initWelcomeModal() {
+  const memberRolesMap = {
+    'member-1': { icon: '👑', roleText: 'Trưởng nhóm & AI Studio', color: '#10b981' },
+    'member-2': { icon: '🛠️', roleText: 'Backend & MongoDB', color: '#3b82f6' },
+    'member-3': { icon: '🎨', roleText: 'Frontend & Giao diện', color: '#ec4899' },
+    'member-4': { icon: '📦', roleText: 'Shopee Tools & Data', color: '#f59e0b' },
+  };
+
+  dom.modalMemberGrid.innerHTML = TEAM_MEMBERS.map((m) => {
+    const meta = memberRolesMap[m.id] || { icon: '👤', roleText: 'Thành viên', color: '#205c46' };
+    const masteredCount = getMemberMasteredSet(m.id).size;
+
+    return `
+      <button class="member-select-card" data-member-id="${m.id}" style="--accent-color: ${meta.color}">
+        <span class="member-select-icon">${meta.icon}</span>
+        <strong class="member-select-name">${m.defaultName}</strong>
+        <span class="member-select-role">${meta.roleText}</span>
+        <small class="member-select-progress">Đã thuộc: ${masteredCount}/${state.cards.length} câu</small>
+      </button>
+    `;
+  }).join('');
+
+  dom.modalMemberGrid.querySelectorAll('.member-select-card').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      selectMember(btn.dataset.memberId);
+      closeWelcomeModal();
+    });
+  });
+
+  dom.switchUserBtn.addEventListener('click', openWelcomeModal);
+
+  // Nếu người dùng chưa từng chọn bao giờ -> Mở Modal chào mừng
+  const hasChosen = localStorage.getItem(STORAGE_KEYS.HAS_CHOSEN);
+  if (!hasChosen) {
+    openWelcomeModal();
+  }
+}
+
+function openWelcomeModal() {
+  dom.welcomeModal.classList.add('is-open');
+}
+
+function closeWelcomeModal() {
+  dom.welcomeModal.classList.remove('is-open');
+  localStorage.setItem(STORAGE_KEYS.HAS_CHOSEN, 'true');
+}
+
+function selectMember(memberId) {
+  state.activeMemberId = memberId;
+  localStorage.setItem(STORAGE_KEYS.ACTIVE_MEMBER, memberId);
+  
+  // Cập nhật giao diện thanh chọn người
+  dom.memberPillsContainer.querySelectorAll('.member-pill').forEach((b) => {
+    b.classList.toggle('active', b.dataset.memberId === memberId);
+  });
+
+  renderFlashcard();
 }
 
 // Navigation Tabs
@@ -81,8 +161,37 @@ function initTabs() {
   });
 }
 
+// Thanh chọn người học riêng biệt
+function initMemberBar() {
+  dom.memberPillsContainer.innerHTML = TEAM_MEMBERS.map((m) => {
+    const masteredCount = getMemberMasteredSet(m.id).size;
+    const isActive = m.id === state.activeMemberId;
+    return `
+      <button class="member-pill ${isActive ? 'active' : ''}" data-member-id="${m.id}">
+        <span>${m.defaultName}</span>
+        <small class="member-pill-count" id="badge-${m.id}">${masteredCount}/${state.cards.length}</small>
+      </button>
+    `;
+  }).join('');
+
+  dom.memberPillsContainer.querySelectorAll('.member-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      selectMember(btn.dataset.memberId);
+    });
+  });
+}
+
+// Cập nhật số thẻ đã thuộc trên badge từng thành viên
+function updateMemberBadges() {
+  TEAM_MEMBERS.forEach((m) => {
+    const count = getMemberMasteredSet(m.id).size;
+    const badge = document.getElementById(`badge-${m.id}`);
+    if (badge) badge.textContent = `${count}/${state.cards.length}`;
+  });
+}
+
 // ==========================================================================
-// FLASHCARDS MODULE (CỰC KỲ ĐƠN GIẢN & TRỰC DIỆN)
+// FLASHCARDS MODULE (ĐỘC LẬP THEO TỪNG THÀNH VIÊN)
 // ==========================================================================
 
 function renderFlashcard() {
@@ -92,7 +201,12 @@ function renderFlashcard() {
   if (total === 0) return;
 
   const card = state.cards[state.currentIndex];
-  const isMastered = state.masteredCardIds.has(card.id);
+  const activeMember = TEAM_MEMBERS.find((m) => m.id === state.activeMemberId) || TEAM_MEMBERS[0];
+  const memberMasteredSet = getMemberMasteredSet(state.activeMemberId);
+  const isMastered = memberMasteredSet.has(card.id);
+
+  // Update Header Name
+  dom.currentUserName.textContent = activeMember.defaultName;
 
   // Front
   dom.cardDeckTag.textContent = card.category;
@@ -101,7 +215,6 @@ function renderFlashcard() {
   // Back (Chỉ có đúng 1 đáp án duy nhất, rõ ràng)
   dom.cardDeckTagBack.textContent = card.category;
   
-  // Format formatted text with linebreaks
   const formattedAnswer = card.answer
     .split('\n\n')
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
@@ -111,18 +224,19 @@ function renderFlashcard() {
 
   // Counters & Progress
   dom.cardCounter.textContent = `Thẻ ${state.currentIndex + 1} / ${total}`;
-  const masteredCount = Array.from(state.masteredCardIds).filter((id) => FLASHCARDS.some((c) => c.id === id)).length;
-  dom.masteryCounter.textContent = `Đã thuộc: ${masteredCount} / ${total}`;
+  dom.masteryCounter.textContent = `${activeMember.defaultName} đã thuộc: ${memberMasteredSet.size} / ${total}`;
   dom.progressFill.style.width = `${((state.currentIndex + 1) / total) * 100}%`;
 
-  // Mastery button
+  // Mastery button cá nhân
   if (isMastered) {
     dom.toggleMasteredBtn.classList.add('mastered');
-    dom.toggleMasteredBtn.textContent = '✅ Đã thuộc bài';
+    dom.toggleMasteredBtn.textContent = `✅ ${activeMember.defaultName} đã thuộc`;
   } else {
     dom.toggleMasteredBtn.classList.remove('mastered');
-    dom.toggleMasteredBtn.textContent = '⭐ Đánh dấu đã thuộc';
+    dom.toggleMasteredBtn.textContent = `⭐ Đánh dấu ${activeMember.defaultName} đã thuộc`;
   }
+
+  updateMemberBadges();
 }
 
 function flipCard() {
@@ -146,15 +260,19 @@ function prevCard() {
   renderFlashcard();
 }
 
+// Bấm đánh dấu đã thuộc (CHỈ ẢNH HƯỞNG TỚI THÀNH VIÊN ĐANG CHỌN)
 function toggleMastered() {
   if (state.cards.length === 0) return;
   const card = state.cards[state.currentIndex];
-  if (state.masteredCardIds.has(card.id)) {
-    state.masteredCardIds.delete(card.id);
+  const memberMasteredSet = getMemberMasteredSet(state.activeMemberId);
+
+  if (memberMasteredSet.has(card.id)) {
+    memberMasteredSet.delete(card.id);
   } else {
-    state.masteredCardIds.add(card.id);
+    memberMasteredSet.add(card.id);
   }
-  localStorage.setItem(STORAGE_KEYS.MASTERED_CARDS, JSON.stringify(Array.from(state.masteredCardIds)));
+
+  saveMemberMasteredSet(state.activeMemberId, memberMasteredSet);
   renderFlashcard();
 }
 

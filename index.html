@@ -17,6 +17,10 @@
         <h1 class="brand-title">Fourgether 🎓 <span>FurneeHome</span></h1>
         <p class="brand-subtitle">Hỏi đáp vị trí Source Code & Phân chia công việc 4 thành viên</p>
       </div>
+      <div class="user-greeting-box">
+        <span class="user-greeting-text">Đang học: <strong id="currentUserName">Hiệp</strong> 👋</span>
+        <button id="switchUserBtn" class="btn-change-user">Đổi người</button>
+      </div>
     </header>
 
     <!-- 2 Navigation Tabs -->
@@ -24,7 +28,7 @@
       <button class="nav-tab active" data-tab="tab-flashcards">
         <span class="tab-icon">🗂️</span>
         <span class="tab-text">1. Flashcards Source Code</span>
-        <span class="tab-badge" id="deckCountBadge">25 thẻ</span>
+        <span class="tab-badge" id="deckCountBadge">32 thẻ</span>
       </button>
       <button class="nav-tab" data-tab="tab-roles">
         <span class="tab-icon">👥</span>
@@ -37,14 +41,23 @@
       
       <!-- PHẦN 1: FLASHCARDS -->
       <section id="tab-flashcards" class="tab-panel active">
-        <!-- Progress bar -->
+        
+        <!-- Chọn người học cá nhân -->
+        <div class="member-bar">
+          <span class="member-bar-label">👤 Chọn người học:</span>
+          <div class="member-pills" id="memberPillsContainer">
+            <!-- Rendered by JS: Hiệp, Phúc, Triệu, Dũng -->
+          </div>
+        </div>
+
+        <!-- Progress bar cá nhân -->
         <div class="progress-bar-container">
           <div class="progress-info">
-            <span id="cardCounter">Thẻ 1 / 25</span>
-            <span id="masteryCounter">Đã thuộc: 0 / 25</span>
+            <span id="cardCounter">Thẻ 1 / 32</span>
+            <span id="masteryCounter">Hiệp đã thuộc: 0 / 32</span>
           </div>
           <div class="progress-track">
-            <div class="progress-fill" id="progressFill" style="width: 4%;"></div>
+            <div class="progress-fill" id="progressFill" style="width: 3%;"></div>
           </div>
         </div>
 
@@ -114,6 +127,21 @@
     <footer class="app-footer">
       <p>Fourgether © 2026 — Dành riêng cho nhóm đồ án <strong>FurneeHome</strong>. Deploy dễ dàng lên Cloudflare Pages.</p>
     </footer>
+  </div>
+
+  <!-- WELCOME MODAL (CHỌN BẠN LÀ AI KHI MỚI VÀO) -->
+  <div class="modal-backdrop" id="welcomeModal">
+    <div class="welcome-card">
+      <div class="welcome-header">
+        <span class="welcome-icon">🎓</span>
+        <h2>Chào mừng bạn đến với Fourgether!</h2>
+        <p>Vui lòng chọn bạn là ai trong nhóm để lưu tiến độ ôn tập riêng của mình:</p>
+      </div>
+
+      <div class="member-select-grid" id="modalMemberGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./app.js"></script>
