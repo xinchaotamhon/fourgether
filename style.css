@@ -21,7 +21,7 @@
   --content-width: 1100px;
   
   --font-main: 'Be Vietnam Pro', Inter, system-ui, -apple-system, sans-serif;
-  --font-serif: 'Be Vietnam Pro', Georgia, serif;
+  --font-serif: 'Be Vietnam Pro', sans-serif;
   --font-mono: 'JetBrains Mono', Consolas, monospace;
 }
 
