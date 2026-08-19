@@ -1,10 +1,10 @@
 // Dữ liệu phân chia công việc cho 4 thành viên nhóm FurneeHome
 
 export const TEAM_MEMBERS = [
-  { id: 'member-1', defaultName: 'Hiệp', label: 'Thành viên 1' },
-  { id: 'member-2', defaultName: 'Phúc', label: 'Thành viên 2' },
-  { id: 'member-3', defaultName: 'Triệu', label: 'Thành viên 3' },
-  { id: 'member-4', defaultName: 'Dũng', label: 'Thành viên 4' },
+  { id: 'member-1', defaultName: 'Hiệp', nickname: 'Hiệp "Gánh Team"', icon: '🦁', color: '#10b981' },
+  { id: 'member-2', defaultName: 'Phúc', nickname: 'Phúc "Chiến Thần"', icon: '⚡', color: '#3b82f6' },
+  { id: 'member-3', defaultName: 'Triệu', nickname: 'Triệu "Siêu Cấp"', icon: '🦊', color: '#ec4899' },
+  { id: 'member-4', defaultName: 'Dũng', nickname: 'Dũng "Bá Đạo"', icon: '🐼', color: '#f59e0b' },
 ];
 
 export const TEAM_ROLES = [

@@ -88,22 +88,14 @@ function init() {
 
 // Modal hỏi bạn là ai khi mới vào web
 function initWelcomeModal() {
-  const memberRolesMap = {
-    'member-1': { icon: '👑', roleText: 'Trưởng nhóm & AI Studio', color: '#10b981' },
-    'member-2': { icon: '🛠️', roleText: 'Backend & MongoDB', color: '#3b82f6' },
-    'member-3': { icon: '🎨', roleText: 'Frontend & Giao diện', color: '#ec4899' },
-    'member-4': { icon: '📦', roleText: 'Shopee Tools & Data', color: '#f59e0b' },
-  };
-
   dom.modalMemberGrid.innerHTML = TEAM_MEMBERS.map((m) => {
-    const meta = memberRolesMap[m.id] || { icon: '👤', roleText: 'Thành viên', color: '#205c46' };
     const masteredCount = getMemberMasteredSet(m.id).size;
 
     return `
-      <button class="member-select-card" data-member-id="${m.id}" style="--accent-color: ${meta.color}">
-        <span class="member-select-icon">${meta.icon}</span>
+      <button class="member-select-card" data-member-id="${m.id}" style="--accent-color: ${m.color}">
+        <span class="member-select-icon">${m.icon}</span>
         <strong class="member-select-name">${m.defaultName}</strong>
-        <span class="member-select-role">${meta.roleText}</span>
+        <span class="member-select-role">${m.nickname}</span>
         <small class="member-select-progress">Đã thuộc: ${masteredCount}/${state.cards.length} câu</small>
       </button>
     `;
