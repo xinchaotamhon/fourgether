@@ -1,6 +1,6 @@
 /* ==========================================================================
    FOURGETHER — FurneeHome Design System & Styling
-   Đồng bộ 100% với CSS thuần (theme.css & global.css) của FurneeHome
+   Font chữ chuẩn hóa tiếng Việt 100% (Be Vietnam Pro) không bao giờ lỗi dấu
    ========================================================================== */
 
 :root {
@@ -20,8 +20,8 @@
   --shadow-hover: 0 16px 36px rgb(29 48 38 / 15%);
   --content-width: 1100px;
   
-  --font-main: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: Georgia, serif;
+  --font-main: 'Be Vietnam Pro', Inter, system-ui, -apple-system, sans-serif;
+  --font-serif: 'Be Vietnam Pro', Georgia, serif;
   --font-mono: 'JetBrains Mono', Consolas, monospace;
 }
 
@@ -55,7 +55,7 @@ body {
 }
 
 /* ==========================================================================
-   HEADER (Phù hợp với site-header của FurneeHome)
+   HEADER
    ========================================================================== */
 
 .app-header {
@@ -67,47 +67,26 @@ body {
 }
 
 .brand-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-main);
   font-size: 1.85rem;
   font-weight: 800;
   color: var(--color-primary-dark);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .brand-title span {
   color: var(--color-accent);
-  font-family: var(--font-serif);
 }
 
 .brand-subtitle {
   color: var(--color-muted);
   font-size: 0.95rem;
   margin-top: 4px;
-}
-
-.btn-icon {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  width: 42px;
-  height: 42px;
-  border-radius: 99px;
-  font-size: 1.15rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgb(29 48 38 / 5%);
-  transition: background .15s ease, transform .15s ease;
-}
-
-.btn-icon:hover {
-  background: #eae6dc;
-  transform: scale(1.04);
+  font-weight: 500;
 }
 
 /* ==========================================================================
-   NAV TABS (Phong cách FurneeHome)
+   NAV TABS
    ========================================================================== */
 
 .nav-tabs {
@@ -181,7 +160,7 @@ body {
 }
 
 .panel-header h2 {
-  font-family: var(--font-serif);
+  font-family: var(--font-main);
   font-size: 1.45rem;
   color: var(--color-primary-dark);
   font-weight: 800;
@@ -376,11 +355,12 @@ body {
 }
 
 .card-question-text {
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--color-primary-dark);
-  font-family: var(--font-serif);
+  font-family: var(--font-main);
+  letter-spacing: -0.01em;
 }
 
 .card-bottom-hint {
@@ -408,7 +388,7 @@ body {
   font-size: 1.05rem;
   font-weight: 750;
   color: var(--color-primary-dark);
-  line-height: 1.45;
+  line-height: 1.5;
   border-left: 4px solid var(--color-primary);
   padding-left: 14px;
 }
@@ -446,6 +426,7 @@ body {
 .detail-text {
   font-size: 0.88rem;
   color: var(--color-text);
+  line-height: 1.5;
 }
 
 .key-points-box {
@@ -472,6 +453,7 @@ body {
   position: relative;
   padding-left: 18px;
   color: var(--color-text);
+  line-height: 1.5;
 }
 
 .key-points-list li::before {
@@ -482,7 +464,7 @@ body {
   font-weight: 800;
 }
 
-/* Flashcard Controls (Phù hợp nút của FurneeHome) */
+/* Flashcard Controls */
 .flashcard-controls {
   display: flex;
   justify-content: center;
@@ -576,7 +558,7 @@ body {
 }
 
 .role-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-main);
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--color-primary-dark);
