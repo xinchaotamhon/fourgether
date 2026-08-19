@@ -213,4 +213,51 @@ export const FLASHCARDS = [
     question: 'Cổng mặc định (Port) của Frontend và Backend là bao nhiêu?',
     answer: '👉 Frontend: Port 5173 (Vite dev server) | Backend: Port 5000 (Express server).\n\nFrontend gọi API backend thông qua URL cấu hình: http://localhost:5000/api.',
   },
+
+  // =========================================================================
+  // NHÓM 6: CÂU HỎI TÌNH HUỐNG & VẤN ĐÁP NÂNG CAO CỦA HỘI ĐỒNG
+  // =========================================================================
+  {
+    id: 'deep-1',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Nếu Cloudflare AI bị lỗi hoặc hết quota thì Room Studio xử lý thế nào?',
+    answer: '👉 File: client/src/pages/RoomStudioPage.jsx & client/src/services/roomPreviewService.js.\n\nHệ thống có cơ chế Fallback: Tự động hiển thị lớp phủ sản phẩm trực tiếp (Canvas 2D Overlay) lên ảnh phòng thật để người dùng vẫn xem trước được bố cục mà không bị gián đoạn.',
+  },
+  {
+    id: 'deep-2',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Tại sao API gửi ảnh /api/room-previews dùng multipart/form-data mà không gửi Base64?',
+    answer: '👉 Tối ưu hiệu năng mạng:\nChuỗi Base64 làm phình to 33% kích thước ảnh, gây tốn RAM server và chậm mạng. Gửi multipart/form-data (Multer) truyền file nhị phân trực tiếp nhanh hơn và tiết kiệm tài nguyên server.',
+  },
+  {
+    id: 'deep-3',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Cơ chế xác thực đăng nhập (Auth Flow) hoạt động thế nào từ Frontend đến Backend?',
+    answer: '👉 Flow đăng nhập:\nFrontend gọi POST /api/auth/login -> Backend so sánh mật khẩu bcrypt, tạo JWT -> Frontend lưu token vào localStorage -> File client/src/services/apiClient.js tự động gắn Authorization: Bearer <token> cho các request tiếp theo.',
+  },
+  {
+    id: 'deep-4',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Nếu muốn thêm một trường mới cho sản phẩm (ví dụ trường material - chất liệu), ta phải sửa những file nào?',
+    answer: '👉 Cần sửa 3 file:\n1. Model: server/src/models/Product.js (khai báo trường material).\n2. Controller: server/src/controllers/productController.js (nhận dữ liệu tạo/sửa).\n3. Giao diện: client/src/pages/ProductListPage.jsx (hiển thị thông tin).',
+  },
+  {
+    id: 'deep-5',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Tại sao trong tool cào Shopee lại dùng findOneAndUpdate({ slug }, ..., { upsert: true })?',
+    answer: '👉 File: tools/importProducts.js.\n\nCơ chế upsert: Nếu sản phẩm đã tồn tại (trùng slug) thì cập nhật giá và thông tin mới nhất; nếu chưa có thì tự động tạo mới. Giúp chạy tool nhiều lần mà không bao giờ bị trùng lặp dữ liệu.',
+  },
+  {
+    id: 'deep-6',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Tại sao chỉ có 1 file .env duy nhất ở thư mục gốc mà server và tool vẫn đọc được?',
+    answer: '👉 File: server/src/config/env.js & tools/importProducts.js.\n\nSử dụng dotenv.config({ path: path.resolve(__dirname, "../../../.env") }) để trỏ trực tiếp ra thư mục gốc, giúp bảo mật và quản trị token tập trung một nơi.',
+  },
+  {
+    id: 'deep-7',
+    category: '🎯 Vấn đáp nâng cao (Giảng viên hỏi)',
+    question: 'Mô hình triển khai Online (Deployment Architecture) của dự án gồm những dịch vụ nào?',
+    answer: '👉 3 dịch vụ chính:\n1. Frontend: Deploy Cloudflare Pages (tốc độ cao qua CDN).\n2. Backend: Deploy Render Web Service (Node.js + Express).\n3. Database: MongoDB Atlas Cloud (Cơ sở dữ liệu đám mây).',
+  },
 ];
+
