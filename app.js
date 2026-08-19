@@ -312,11 +312,11 @@ function renderRoles() {
         </div>
 
         <div class="member-assign-box">
-          <span class="member-assign-label">Phụ trách:</span>
+          <span class="member-assign-label">Thực hiện:</span>
           <select class="member-select" data-role-id="${role.id}">
             ${TEAM_MEMBERS.map((m) => `
               <option value="${m.id}" ${m.id === assignedId ? 'selected' : ''}>
-                👤 ${getMemberName(m.id)} (${m.label})
+                ${m.nickname}
               </option>
             `).join('')}
           </select>
