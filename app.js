@@ -93,9 +93,8 @@ function initWelcomeModal() {
 
     return `
       <button class="member-select-card" data-member-id="${m.id}" style="--accent-color: ${m.color}">
-        <span class="member-select-icon">${m.icon}</span>
+        <span class="member-select-icon">👤</span>
         <strong class="member-select-name">${m.defaultName}</strong>
-        <span class="member-select-role">${m.nickname}</span>
         <small class="member-select-progress">Đã thuộc: ${masteredCount}/${state.cards.length} câu</small>
       </button>
     `;
@@ -316,21 +315,21 @@ function renderRoles() {
           <select class="member-select" data-role-id="${role.id}">
             ${TEAM_MEMBERS.map((m) => `
               <option value="${m.id}" ${m.id === assignedId ? 'selected' : ''}>
-                ${m.nickname}
+                👤 ${m.defaultName}
               </option>
             `).join('')}
           </select>
         </div>
 
         <div class="role-files-box">
-          <div class="detail-label">📂 Các file phụ trách chính:</div>
+          <div class="detail-label">🏷️ Nhóm danh mục phụ trách:</div>
           <ul class="role-files-list">
             ${role.keyFiles.map((file) => `<li><code>${file}</code></li>`).join('')}
           </ul>
         </div>
 
         <div class="checklist-box">
-          <div class="checklist-title">Checklist nhiệm vụ:</div>
+          <div class="checklist-title">Checklist nhiệm vụ (Mỗi mục tìm 10 link Shopee):</div>
           <ul class="checklist-items">
             ${role.checklist.map((item) => {
               const isChecked = state.roleChecklist[item.id] !== undefined 
@@ -358,6 +357,17 @@ function renderRoles() {
     });
   });
 
+  dom.rolesContainer.querySelectorAll('.checklist-item').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      const checkbox = row.querySelector('input[type="checkbox"]');
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+
   dom.rolesContainer.querySelectorAll('.checklist-item input[type="checkbox"]').forEach((checkbox) => {
     checkbox.addEventListener('change', (e) => {
       const itemId = e.target.dataset.itemId;
@@ -366,7 +376,7 @@ function renderRoles() {
       localStorage.setItem(STORAGE_KEYS.ROLE_CHECKLIST, JSON.stringify(state.roleChecklist));
       
       const parent = e.target.closest('.checklist-item');
-      parent.classList.toggle('done', isChecked);
+      if (parent) parent.classList.toggle('done', isChecked);
     });
   });
 }
