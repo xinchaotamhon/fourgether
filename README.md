@@ -1,18 +1,15 @@
 # Fourgether 🎓 — Ôn tập & Chia việc nhóm FurneeHome
 
-> **Fourgether** là trang web phụ giúp 4 thành viên nhóm (**Hiệp, Phúc, Triệu, Dũng**) ôn tập các câu hỏi để hiểu rõ 100% dự án **FurneeHome** và phân chia công việc rõ ràng cho từng bạn.
+> **Fourgether** là trang web phụ giúp 4 thành viên nhóm (**Hiệp, Phúc, Triều, Dũng**) ôn tập các câu hỏi để hiểu rõ 100% dự án **FurneeHome** và phân chia công việc rõ ràng cho từng bạn.
 
 ---
 
-## 📱 Cấu trúc đơn giản gồm đúng 2 phần:
+## 📱 Cách học tối giản
 
-1. **🗂️ Phần 1: Flashcards Ôn tập dự án FurneeHome**
-   - Lật thẻ đơn giản để học hiểu toàn bộ dự án: Luồng AI 1-chạm (One-touch), tại sao bỏ 3D sang 2D, tại sao lưu tọa độ chuẩn hóa (0..1), kiến trúc MVC trực diện, bảo mật .env, và tool cào Shopee.
-   - Thao tác: Bấm vào thẻ để lật xem đáp án (hoặc phím Space), bấm ⬅️ / ➡️ để chuyển câu.
-
-2. **👥 Phần 2: Phân chia công việc 4 người**
-   - 4 vai trò cụ thể: Trưởng nhóm & AI, Frontend UI, Backend DB, Data Shopee & QA.
-   - Mỗi bạn chọn tên mình vào vai trò và tích danh sách công việc cần làm.
+- Trang đầu là **cây kiến thức FurneeHome**: nút gốc là dự án chung, bốn nhánh là Hiệp, Phúc, Triều và Dũng. Mỗi nhánh có các chủ đề liên quan đến phần bạn phụ trách.
+- Bấm vào tên thành viên để học các chủ đề của bạn, hoặc bấm thẳng vào một chủ đề để vào flashcard ngay. Hiệp học phần khó nhất, sau đó lần lượt Phúc, Triều và Dũng.
+- Trong flashcard: tự nói câu trả lời, bấm thẻ hoặc phím **Space** để lật, dùng **← / →** chuyển câu, rồi đánh dấu đã thuộc. Phím **Esc** quay lại cây kiến thức.
+- Đây là trang tĩnh phục vụ ôn tập. Không có cache, service worker, localStorage, sessionStorage hay IndexedDB; tải lại trang sẽ bắt đầu một phiên học mới.
 
 ---
 
