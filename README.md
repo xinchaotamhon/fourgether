@@ -1,24 +1,29 @@
 # Fourgether 🎓 — Cây học chung FurneeHome
 
-> **Fourgether** là trang web tĩnh giúp cả nhóm (**Hiệp, Phúc, Triều, Dũng**) học cùng một lộ trình để hiểu đầy đủ dự án **FurneeHome**. Đây là công cụ học chung, không chia theo thành viên hoặc độ khó.
+Fourgether là một trang tĩnh để cả nhóm học cùng một câu chuyện về FurneeHome. Cây được tổ chức theo luồng, không chia theo thành viên hay mức độ khó:
 
----
+`Mục tiêu dự án → Luồng người dùng → Frontend → Backend/AI → Dữ liệu/vận hành → Bảo vệ`
 
-## 📱 Cách học tối giản
+## Cách sử dụng
 
-- Trang đầu là **cây kiến thức FurneeHome**: đi theo luồng từ mục tiêu → kiến trúc → frontend → Room Studio → backend → dữ liệu → AI → collection → deploy → vấn đáp.
-- Bấm vào bất kỳ node nào để mở flashcard của node đó ngay. Tất cả mọi người học cùng một luồng và có thể quay lại node bất kỳ để ôn.
-- Trong flashcard: tự nói câu trả lời, bấm thẻ hoặc phím **Space** để lật, dùng **← / →** chuyển câu, rồi đánh dấu đã thuộc. Phím **Esc** quay lại cây kiến thức.
-- Đây là trang tĩnh phục vụ ôn tập. Không có cache, service worker, localStorage, sessionStorage hay IndexedDB; tải lại trang sẽ bắt đầu một phiên học mới.
+- Nhánh **Luồng người dùng** được mở sẵn để người mới đi từ khám phá, chọn món, Room Studio, kết quả, collection đến public/reuse.
+- Bấm `+` hoặc `−` để mở/thu một node. Bấm vào nội dung node để mở flashcard; hai hành động này tách biệt để không gây mở bài học ngoài ý muốn.
+- Ô tìm kiếm tìm được tên node, route, hàm, file hoặc từ khóa. Phím `/` đặt con trỏ vào ô tìm kiếm.
+- Trong flashcard, tự nói câu trả lời rồi bấm thẻ hoặc phím **Space** để xem input → process → output, caller/callee, source và trường hợp lỗi. Phím **← / →** chuyển thẻ; **Esc** quay lại cây.
+- Nút **Mở toàn cây** và **Thu gọn** dùng khi cần xem tổng quan hoặc tập trung một luồng.
 
----
+## Nguyên tắc nội dung
 
-## 🚀 Hướng dẫn Deploy lên Cloudflare Pages (30 giây):
+Nội dung được đối chiếu với source FurneeHome hiện tại: route, component, service, controller, model và tool. Các câu hỏi về prompt/bố cục nhấn mạnh điều người dùng cần nhập cụ thể — ví dụ “bàn thấp dùng ngồi bệt, không ghế cao” — thay vì để model tự suy đoán chiều cao.
 
-1. Đăng nhập [Cloudflare Dashboard](https://dash.cloudflare.com/) $\rightarrow$ **Workers & Pages** $\rightarrow$ **Create application** $\rightarrow$ **Pages** $\rightarrow$ **Connect to Git**.
-2. Chọn Repo `xinchaotamhon/fourgether` (hoặc repo FurneeHome nếu nhóm đặt folder này bên trong repo chính).
-3. Điền cấu hình:
-   - **Framework preset:** `None`
-   - **Build command:** *(Để trống)*
-   - **Build output directory:** `.`
-4. Bấm **Save and Deploy**.
+Ý tưởng trình bày tham khảo Archify ở `D:/mydata/new-git-3/test_git/archify`: một trục kể chuyện chính trước, progressive disclosure, tìm kiếm node, trạng thái không bịa topology, nhãn semantic rõ ràng và hỗ trợ bàn phím/reduced motion. Fourgether chỉ dùng các ý tưởng đó bằng HTML/CSS/JS thuần, không sao chép app hay thêm dependency.
+
+## Trạng thái và triển khai
+
+- `data/flashcards.js` hiện có 35 node và 40 flashcard; `app.js` kiểm tra parent/card references khi khởi động.
+- Cây không dùng `localStorage`, `sessionStorage`, IndexedDB, service worker hay cache để lưu tiến độ. Tải lại trang sẽ tạo phiên học mới.
+- Deploy Cloudflare Pages: chọn repo/folder `fourgether`, Framework preset **None**, để trống build command và dùng `.` làm output directory.
+
+## Phạm vi
+
+Đây là công cụ học tĩnh, không phải runtime FurneeHome. Khi app chính đổi hợp đồng, cần cập nhật card/source tương ứng trước khi dùng cây làm tài liệu bảo vệ.
