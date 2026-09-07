@@ -29,7 +29,12 @@ const hasCycle = (items, next) => {
 };
 
 test('Fourgether curriculum is complete and traceable', async () => {
-  const { FLOW_NODES, FLASHCARDS, COURSES } = await loadCurriculum();
+  const {
+    FLOW_NODES,
+    FLASHCARDS,
+    DEFENSE_QUESTIONS,
+    COURSES,
+  } = await loadCurriculum();
   const nodeIds = new Set(FLOW_NODES.map((node) => node.id));
   assert.equal(nodeIds.size, FLOW_NODES.length, 'node IDs must be unique');
   assert.deepEqual(FLOW_NODES.filter((node) => !node.parent).map((node) => node.id), ['project'], 'project must be the only root');
@@ -60,6 +65,8 @@ test('Fourgether curriculum is complete and traceable', async () => {
       assert.equal(path.isAbsolute(source.path), false, `${card.id} source path is repository-relative`);
       if (furneehomeRoot) {
         const sourcePath = path.resolve(furneehomeRoot, source.path);
+        const relativePath = path.relative(furneehomeRoot, sourcePath);
+        assert.ok(relativePath && !relativePath.startsWith('..') && !path.isAbsolute(relativePath), `${card.id} source stays inside FurneeHome`);
         assert.ok(fs.existsSync(sourcePath), `${card.id} source path exists: ${source.path}`);
         assert.ok(fs.readFileSync(sourcePath, 'utf8').includes(source.symbol), `${card.id} source symbol exists: ${source.symbol}`);
       }
@@ -67,16 +74,81 @@ test('Fourgether curriculum is complete and traceable', async () => {
   }
   assert.ok(COURSES.length, 'at least one course exists');
   for (const course of COURSES) {
-    assert.ok(course.id && course.title && course.nodeIds.length, 'course is named and non-empty');
+    assert.ok(course.id && course.title && course.description, 'course is named and described');
+    assert.ok(Array.isArray(course.cardIds) && course.cardIds.length, `${course.id} contains cards`);
+    assert.equal(new Set(course.cardIds).size, course.cardIds.length, `${course.id} has no duplicate card`);
+    course.cardIds.forEach((cardId) => assert.ok(cardIds.has(cardId), `${course.id} references existing card ${cardId}`));
+    if (!course.nodeIds) continue;
+
     assert.equal(new Set(course.nodeIds).size, course.nodeIds.length, `${course.id} has no duplicate node`);
     course.nodeIds.forEach((nodeId) => assert.ok(nodeIds.has(nodeId), `${course.id} references existing node ${nodeId}`));
-    assert.equal(course.nodeIds.length, FLOW_NODES.length, `${course.id} covers every node`);
     const position = new Map(course.nodeIds.map((nodeId, index) => [nodeId, index]));
     for (const node of FLOW_NODES) {
+      if (node.parent) assert.ok(position.get(node.parent) < position.get(node.id), `${course.id} teaches parent ${node.parent} before ${node.id}`);
       for (const prerequisite of node.prerequisiteNodeIds || []) {
         assert.ok(position.get(prerequisite) < position.get(node.id), `${course.id} teaches ${prerequisite} before ${node.id}`);
       }
     }
+  }
+
+  const commonCourse = COURSES.find((course) => course.kind === 'common');
+  const supplementalIds = new Set(DEFENSE_QUESTIONS.map((card) => card.id));
+  assert.ok(commonCourse, 'one common course exists');
+  assert.equal(commonCourse.nodeIds.length, FLOW_NODES.length, 'common course covers every node');
+  assert.equal(commonCourse.cardIds.length, FLASHCARDS.length - DEFENSE_QUESTIONS.length, 'common course contains every core card');
+  commonCourse.cardIds.forEach((cardId) => assert.equal(supplementalIds.has(cardId), false, 'common course excludes supplemental examiner questions'));
+});
+
+test('Fourgether divides presentation paths and examiner questions safely', async () => {
+  const {
+    FLOW_NODES,
+    FLASHCARDS,
+    DEFENSE_QUESTIONS,
+    DEFENSE_QUESTION_IDS,
+    MEMBER_PATHS,
+    COURSES,
+  } = await loadCurriculum();
+  const nodeIds = new Set(FLOW_NODES.map((node) => node.id));
+  const cardsById = new Map(FLASHCARDS.map((card) => [card.id, card]));
+  const commonCourse = COURSES.find((course) => course.kind === 'common');
+  const commonPosition = new Map(commonCourse.nodeIds.map((nodeId, index) => [nodeId, index]));
+  const supplementalIds = new Set(DEFENSE_QUESTIONS.map((card) => card.id));
+
+  assert.deepEqual(MEMBER_PATHS.map((member) => member.name), ['Hiệp', 'Phúc', 'Triều', 'Dũng']);
+  assert.deepEqual(MEMBER_PATHS.map((member) => member.difficultyRank), [1, 2, 3, 4]);
+  assert.deepEqual([...MEMBER_PATHS].sort((a, b) => a.presentationOrder - b.presentationOrder).map((member) => member.name), ['Dũng', 'Triều', 'Phúc', 'Hiệp']);
+
+  const assignedQuestions = [];
+  for (const member of MEMBER_PATHS) {
+    assert.ok(member.focus && member.presentation.length && member.handoff, `${member.name} has a presentation plan`);
+    assert.equal(new Set(member.nodeIds).size, member.nodeIds.length, `${member.name} has no duplicate node`);
+    member.nodeIds.forEach((nodeId) => assert.ok(nodeIds.has(nodeId), `${member.name} references existing node ${nodeId}`));
+    member.nodeIds.slice(1).forEach((nodeId, index) => {
+      assert.ok(commonPosition.get(member.nodeIds[index]) < commonPosition.get(nodeId), `${member.name} follows the common learning flow`);
+    });
+
+    const questionIds = [...member.questions.high, ...member.questions.medium];
+    assert.equal(new Set(questionIds).size, questionIds.length, `${member.name} has no duplicate question`);
+    questionIds.forEach((cardId) => assert.ok(cardsById.has(cardId), `${member.name} references existing question ${cardId}`));
+    assignedQuestions.push(...questionIds);
+
+    const memberCourse = COURSES.find((course) => course.memberId === member.id);
+    assert.ok(memberCourse, `${member.name} has a course`);
+    FLASHCARDS.filter((card) => member.nodeIds.includes(card.nodeId) && !supplementalIds.has(card.id))
+      .forEach((card) => assert.ok(memberCourse.cardIds.includes(card.id), `${member.name} course contains core card ${card.id}`));
+    questionIds.forEach((cardId) => assert.ok(memberCourse.cardIds.includes(cardId), `${member.name} course contains question ${cardId}`));
+  }
+
+  assert.equal(new Set(assignedQuestions).size, assignedQuestions.length, 'each examiner question has one main owner');
+  assert.deepEqual(new Set(DEFENSE_QUESTION_IDS), new Set(assignedQuestions), 'defense deck matches all assigned questions');
+  const defenseCourse = COURSES.find((course) => course.kind === 'defense');
+  assert.deepEqual(new Set(defenseCourse.cardIds), new Set(DEFENSE_QUESTION_IDS), 'defense course contains the complete question bank');
+
+  const memberIds = new Set(MEMBER_PATHS.map((member) => member.id));
+  for (const card of DEFENSE_QUESTIONS) {
+    assert.ok(memberIds.has(card.owner), `${card.id} has a known owner`);
+    assert.ok(['cao', 'vừa'].includes(card.likelihood), `${card.id} has a supported likelihood`);
+    assert.ok(DEFENSE_QUESTION_IDS.includes(card.id), `${card.id} appears in the defense deck`);
   }
 });
 
@@ -85,5 +157,4 @@ test('Fourgether remains a no-storage static learning tool', () => {
   assert.doesNotMatch(code, /\b(?:localStorage|sessionStorage)\s*\./, 'Web Storage API is forbidden');
   assert.doesNotMatch(code, /\bindexedDB\s*\./, 'IndexedDB is forbidden');
   assert.doesNotMatch(code, /(?:navigator\.)?serviceWorker\s*\./, 'service worker is forbidden');
-  assert.doesNotMatch(code, /teamRoles/, 'member-assignment data must not return to the shared learning tool');
 });

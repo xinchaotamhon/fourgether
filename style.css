@@ -73,3 +73,242 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(235, 109, 80
 .course-launch { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 11px; padding: 13px 15px; border: 1px solid #e2cdbd; background: #fff7f1; }.course-launch strong, .course-launch span { display: block; }.course-launch strong { color: var(--ink); font-size: .82rem; }.course-launch span { margin-top: 3px; color: var(--muted); font-size: .69rem; }.course-launch button { flex: 0 0 auto; padding: 9px 12px; border: 1px solid var(--coral); border-radius: 4px; color: white; background: var(--coral); font-size: .72rem; font-weight: 800; }.course-launch button:hover { background: #d85d43; }.detail-actions { display: flex; flex-wrap: wrap; gap: 7px; }.detail-button { padding: 6px 8px; border: 1px solid #d9d2c9; border-radius: 4px; color: var(--muted); background: #fffdfa; font-size: .67rem; }.detail-button:hover, .detail-button.is-open { border-color: var(--coral); color: var(--coral); }.card-detail { padding: 10px 11px; border-left: 2px solid #e5b09e; background: #fff8f3; }.card-detail h3 { margin: 0 0 4px; color: var(--coral); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; }.card-detail h3:not(:first-child) { margin-top: 10px; }.card-detail p { margin: 0; color: #5c5c55; font-size: .74rem; line-height: 1.55; }.card-sources { display: grid; gap: 3px; color: #77766e; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .6rem; line-height: 1.4; }.card-sources b { color: var(--coral); font-family: "Segoe UI", Arial, sans-serif; font-size: .63rem; }
 .flashcard button.card-foot { width: 100%; border-right: 0; border-bottom: 0; border-left: 0; color: #938d83; background: transparent; cursor: pointer; }.flashcard button.card-foot:hover { color: var(--coral); }
 @media (max-width: 680px) { .course-launch { align-items: flex-start; flex-direction: column; } }
+
+.course-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.course-launch button.secondary {
+  color: var(--coral);
+  background: white;
+}
+
+.course-launch button.secondary:hover {
+  color: white;
+  background: var(--coral);
+}
+
+.roles-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+.roles-intro {
+  max-width: 760px;
+  margin-bottom: 24px;
+}
+
+.roles-intro h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(1.8rem, 3.4vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -.045em;
+}
+
+.roles-intro > p:last-child {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.shared-plan {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #dfd6ca;
+  background: rgba(255, 255, 255, .72);
+}
+
+.shared-plan strong,
+.shared-plan span {
+  display: block;
+}
+
+.shared-plan strong {
+  font-size: .78rem;
+}
+
+.shared-plan span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.shared-plan button,
+.role-course-button {
+  padding: 9px 12px;
+  border: 1px solid var(--coral);
+  border-radius: 4px;
+  color: white;
+  background: var(--coral);
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+.shared-plan button:hover,
+.role-course-button:hover {
+  background: #d85d43;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.member-card {
+  padding: 20px;
+  border: 1px solid #dfd6ca;
+  border-top: 4px solid var(--coral);
+  border-radius: 5px;
+  background: rgba(255, 253, 248, .96);
+  box-shadow: 0 9px 22px rgba(45, 42, 35, .08);
+}
+
+.member-phuc { border-top-color: #7a71c5; }
+.member-trieu { border-top-color: #4b8e8a; }
+.member-dung { border-top-color: #d49a3a; }
+
+.member-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.member-card h2 {
+  margin: 3px 0 0;
+  font-size: 1.55rem;
+}
+
+.member-card h3 {
+  margin: 18px 0 8px;
+  color: var(--ink);
+  font-size: .68rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.member-order {
+  color: var(--muted);
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.difficulty-badge,
+.question-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid #e4c8ba;
+  border-radius: 999px;
+  color: var(--coral);
+  background: #fff6f0;
+  font-size: .62rem;
+  font-weight: 800;
+}
+
+.member-focus {
+  min-height: 42px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.55;
+}
+
+.member-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.path-step {
+  padding: 4px 6px;
+  border: 1px solid #e4ddd3;
+  background: white;
+  color: #55564f;
+  font-size: .62rem;
+}
+
+.path-arrow {
+  color: #b4a99a;
+  font-size: .62rem;
+}
+
+.presentation-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: #55564f;
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
+.handoff {
+  min-height: 54px;
+  margin: 16px 0;
+  padding: 10px;
+  border-left: 2px solid #dfb19f;
+  background: #fff8f3;
+  color: #5d5d56;
+  font-size: .69rem;
+  line-height: 1.5;
+}
+
+.role-course-button {
+  width: 100%;
+}
+
+.question-badge {
+  margin-top: 10px;
+}
+
+@media (max-width: 860px) {
+  .shared-plan {
+    grid-template-columns: 1fr auto;
+  }
+
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .member-focus,
+  .handoff {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .course-actions,
+  .course-actions button,
+  .shared-plan,
+  .shared-plan button {
+    width: 100%;
+  }
+
+  .shared-plan {
+    grid-template-columns: 1fr;
+  }
+
+  .roles-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .member-card header {
+    flex-direction: column-reverse;
+  }
+}
