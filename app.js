@@ -1,44 +1,48 @@
 import {
   COURSES,
-  DEFENSE_QUESTION_IDS,
   FLASHCARDS,
   FLOW_NODES,
+  LEARNING_FLOWS,
   MEMBER_PATHS,
 } from './data/flashcards.js';
 
-// Fourgether only keeps progress in memory. Reloading starts a new session.
+// Progress lives only in memory. Reloading starts a new learning session.
 const state = {
-  view: 'tree',
-  returnView: 'tree',
-  nodeId: null,
-  courseId: null,
+  view: 'flow',
+  flowId: 'common',
+  milestoneId: null,
+  deckCardIds: [],
+  deckTitle: '',
   index: 0,
   revealed: false,
   details: new Set(),
   mastered: new Set(),
-  expanded: new Set(['project', 'journey']),
-  query: '',
 };
 
 const app = document.getElementById('app');
 const nodesById = new Map(FLOW_NODES.map((node) => [node.id, node]));
 const cardsById = new Map(FLASHCARDS.map((card) => [card.id, card]));
 
-const childrenOf = (nodeId) => FLOW_NODES.filter((node) => node.parent === nodeId);
-const cardsForNode = (nodeId) => FLASHCARDS.filter((card) => card.nodeId === nodeId);
+const flowById = (flowId) => LEARNING_FLOWS.find((flow) => flow.id === flowId);
 const courseById = (courseId) => COURSES.find((course) => course.id === courseId);
+const memberById = (memberId) => MEMBER_PATHS.find((member) => member.id === memberId);
 const cardsFromIds = (cardIds = []) => cardIds.map((id) => cardsById.get(id)).filter(Boolean);
+const milestonesOf = (flow) => flow.phases.flatMap((phase) => phase.milestones);
+const milestoneById = (flow, milestoneId) => milestonesOf(flow).find((item) => item.id === milestoneId);
 const escapeHtml = (value) => String(value ?? '').replace(
   /[&<>'"]/g,
   (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character],
 );
 
-function activeCards() {
-  if (!state.courseId) return cardsForNode(state.nodeId);
-  const course = courseById(state.courseId);
-  if (!course) return [];
-  if (course.cardIds) return cardsFromIds(course.cardIds);
-  return course.nodeIds.flatMap(cardsForNode);
+function cardIdsForMilestone(flow, milestone) {
+  const nodeIds = new Set(milestone.nodeIds);
+  const course = courseById(flow.courseId);
+  return course.cardIds.filter((cardId) => nodeIds.has(cardsById.get(cardId)?.nodeId));
+}
+
+function questionIdsForMilestone(flow, milestone) {
+  const nodeIds = new Set(milestone.nodeIds);
+  return flow.questionIds.filter((cardId) => nodeIds.has(cardsById.get(cardId)?.nodeId));
 }
 
 function questionMeta(cardId) {
@@ -54,20 +58,37 @@ function validateCurriculum() {
   const nodeIds = new Set(FLOW_NODES.map((node) => node.id));
   const cardIds = new Set(FLASHCARDS.map((card) => card.id));
 
-  for (const node of FLOW_NODES) {
-    if (node.parent && !nodeIds.has(node.parent)) errors.push(`Node ${node.id} thiếu parent`);
-    if (!cardsForNode(node.id).length) errors.push(`Node ${node.id} chưa có thẻ`);
-  }
-
-  for (const course of COURSES) {
-    for (const cardId of course.cardIds || []) {
-      if (!cardIds.has(cardId)) errors.push(`Course ${course.id} thiếu card ${cardId}`);
+  for (const flow of LEARNING_FLOWS) {
+    const course = courseById(flow.courseId);
+    if (!course) errors.push(`Flow ${flow.id} thiếu course`);
+    if (flow.phases.map((phase) => phase.id).join(',') !== 'input,process,output') {
+      errors.push(`Flow ${flow.id} sai thứ tự phase`);
     }
-  }
 
-  for (const member of MEMBER_PATHS) {
-    for (const nodeId of member.nodeIds) {
-      if (!nodeIds.has(nodeId)) errors.push(`${member.name} thiếu node ${nodeId}`);
+    const seenNodes = new Set();
+    for (const milestone of milestonesOf(flow)) {
+      for (const nodeId of milestone.nodeIds) {
+        if (!nodeIds.has(nodeId)) errors.push(`${milestone.id} thiếu node ${nodeId}`);
+        if (seenNodes.has(nodeId)) errors.push(`${flow.id} lặp node ${nodeId}`);
+        seenNodes.add(nodeId);
+      }
+    }
+
+    for (const questionId of flow.questionIds) {
+      if (!cardIds.has(questionId)) errors.push(`${flow.id} thiếu câu ${questionId}`);
+      const mapped = milestonesOf(flow).filter((milestone) => (
+        milestone.nodeIds.includes(cardsById.get(questionId)?.nodeId)
+      ));
+      if (mapped.length !== 1) errors.push(`${flow.id} chưa đặt ${questionId} vào đúng một bước`);
+    }
+
+    if (course) {
+      for (const cardId of course.cardIds) {
+        const mapped = milestonesOf(flow).some((milestone) => (
+          milestone.nodeIds.includes(cardsById.get(cardId)?.nodeId)
+        ));
+        if (!mapped) errors.push(`${flow.id} chưa đặt thẻ ${cardId} vào luồng`);
+      }
     }
   }
 
@@ -75,228 +96,172 @@ function validateCurriculum() {
   return errors;
 }
 
-function matchingNodeIds() {
-  const query = state.query.trim().toLocaleLowerCase('vi');
-  if (!query) return null;
-
-  const matches = new Set();
-  for (const node of FLOW_NODES) {
-    const cardText = cardsForNode(node.id).flatMap((card) => [
-      card.prompt,
-      card.modelAnswer,
-      card.explanation,
-      ...card.sourceRefs.map((source) => `${source.path} ${source.symbol}`),
-    ]);
-    const searchableText = [node.id, node.label, node.shortLabel, ...cardText]
-      .join(' ')
-      .toLocaleLowerCase('vi');
-
-    if (!searchableText.includes(query)) continue;
-    matches.add(node.id);
-    let parent = node.parent ? nodesById.get(node.parent) : null;
-    while (parent) {
-      matches.add(parent.id);
-      parent = parent.parent ? nodesById.get(parent.parent) : null;
-    }
-  }
-  return matches;
-}
-
-function nodeButton(node, matches) {
-  const children = childrenOf(node.id);
-  const expanded = state.expanded.has(node.id);
-  const count = cardsForNode(node.id).length;
-  const highlighted = matches?.has(node.id) ? 'is-match' : '';
-
+function renderFlowTabs() {
   return `
-    <div class="tree-card-wrap ${highlighted}">
-      <button class="node-card tone-${escapeHtml(node.tone)}" data-action="node" data-node-id="${escapeHtml(node.id)}" aria-label="Học ${escapeHtml(node.label)}">
-        <span class="node-top">
-          <span class="node-kicker">${escapeHtml(node.kicker || node.order)}</span>
-          ${children.length ? `<span class="child-count">${children.length} nhánh</span>` : ''}
-        </span>
-        <h2>${escapeHtml(node.label)}</h2>
-        <p>${escapeHtml(node.shortLabel)}</p>
-        <div class="node-bottom"><span>Học thẻ của node này</span><b>${count} thẻ</b></div>
-      </button>
-      ${children.length ? `
-        <button class="toggle-node" data-action="toggle" data-node-id="${escapeHtml(node.id)}" aria-expanded="${expanded}" aria-label="${expanded ? 'Thu gọn' : 'Mở rộng'} ${escapeHtml(node.label)}">
-          ${expanded ? '−' : '+'}
-        </button>
-      ` : ''}
-    </div>
+    <nav class="flow-tabs" role="tablist" aria-label="Chọn luồng học">
+      ${LEARNING_FLOWS.map((flow) => `
+        <button
+          id="flow-tab-${escapeHtml(flow.id)}"
+          class="flow-tab ${flow.id === state.flowId ? 'is-active' : ''}"
+          data-action="flow"
+          data-flow-id="${escapeHtml(flow.id)}"
+          type="button"
+          role="tab"
+          aria-selected="${flow.id === state.flowId}"
+          aria-controls="flow-overview"
+        >${escapeHtml(flow.tab)}</button>
+      `).join('')}
+    </nav>
   `;
 }
 
-function renderNode(node, matches) {
-  const children = childrenOf(node.id);
-  const visibleChildren = matches
-    ? children.filter((child) => matches.has(child.id))
-    : children;
-  const expanded = state.expanded.has(node.id) || Boolean(state.query.trim());
+function renderMilestone(flow, milestone) {
+  const cardIds = cardIdsForMilestone(flow, milestone);
+  const questionIds = questionIdsForMilestone(flow, milestone);
+  const learned = cardIds.filter((cardId) => state.mastered.has(cardId)).length;
+  const active = milestone.id === state.milestoneId;
 
   return `
-    <li class="tree-item ${children.length ? 'has-children' : 'is-leaf'}">
-      ${nodeButton(node, matches)}
-      ${expanded && visibleChildren.length
-        ? `<ul class="tree-level">${visibleChildren.map((child) => renderNode(child, matches)).join('')}</ul>`
-        : ''}
+    <li>
+      <button
+        class="milestone ${active ? 'is-active' : ''}"
+        data-action="milestone"
+        data-milestone-id="${escapeHtml(milestone.id)}"
+        type="button"
+        aria-expanded="${active}"
+        aria-controls="milestone-detail"
+      >
+        <span class="milestone-title">${escapeHtml(milestone.title)}</span>
+        <span class="milestone-summary">${escapeHtml(milestone.summary)}</span>
+        <span class="milestone-meta">
+          <span>${learned}/${cardIds.length} thẻ</span>
+          <span class="question-count">? ${questionIds.length} câu</span>
+        </span>
+      </button>
     </li>
   `;
 }
 
-function renderTree() {
-  state.view = 'tree';
-  state.courseId = null;
-  const commonCourse = COURSES.find((course) => course.kind === 'common');
-  const root = nodesById.get('project');
-  const matches = matchingNodeIds();
-  const rootExpanded = state.expanded.has(root.id) || Boolean(state.query.trim());
-  const visibleRoots = rootExpanded
-    ? childrenOf(root.id).filter((node) => !matches || matches.has(node.id))
-    : [];
-
-  app.innerHTML = `
-    <section class="tree-heading">
-      <div>
-        <p class="eyebrow">BẢN ĐỒ HỌC THEO LUỒNG</p>
-        <h1>Hiểu FurneeHome từ trải nghiệm đến hàm thật</h1>
-        <p class="lead">Cả nhóm học toàn dự án trước, sau đó mỗi người đào sâu phần mình thuyết trình.</p>
-      </div>
-      <div class="session-score">
-        <strong>${state.mastered.size}/${FLASHCARDS.length}</strong>
-        <span>thẻ đã thuộc<br>trong phiên này</span>
-      </div>
-    </section>
-
-    <section class="course-launch" aria-label="Bắt đầu học">
-      <div>
-        <strong>${escapeHtml(commonCourse.title)}</strong>
-        <span>${escapeHtml(commonCourse.description)}</span>
-      </div>
-      <div class="course-actions">
-        <button data-action="course" data-course-id="${escapeHtml(commonCourse.id)}" type="button">Học toàn bộ →</button>
-        <button class="secondary" data-action="roles" type="button">Lộ trình 4 người</button>
-      </div>
-    </section>
-
-    <section class="finder-bar" aria-label="Tìm trong cây học">
-      <label for="node-finder">Tìm node, hàm hoặc file</label>
-      <div class="finder-input">
-        <span aria-hidden="true">⌕</span>
-        <input id="node-finder" type="search" value="${escapeHtml(state.query)}" placeholder="Ví dụ: OTP, reuse, cameraSolver…">
-        <button data-action="clear-search" type="button" aria-label="Xóa tìm kiếm">×</button>
-      </div>
-      <span class="finder-result">${matches ? `${matches.size} node liên quan` : 'Gõ / để tìm nhanh'}</span>
-    </section>
-
-    <section class="tree-toolbar">
-      <div><span class="legend-dot coral"></span> Trục người dùng</div>
-      <div><span class="legend-dot blue"></span> Frontend / API</div>
-      <div><span class="legend-dot teal"></span> Dữ liệu / bằng chứng</div>
-      <div class="toolbar-actions">
-        <button data-action="expand-all" type="button">Mở toàn cây</button>
-        <button data-action="collapse-all" type="button">Thu gọn</button>
-      </div>
-    </section>
-
-    <section class="tree-shell" aria-label="Cây kiến thức FurneeHome">
-      <div class="tree-root">
-        ${nodeButton(root, matches)}
-        ${rootExpanded ? '<span class="root-connector" aria-hidden="true"></span>' : ''}
-      </div>
-      ${rootExpanded
-        ? `<ul class="tree-level top-level">${visibleRoots.map((node) => renderNode(node, matches)).join('')}</ul>`
-        : '<p class="collapsed-note">Cây đang thu gọn. Bấm + trên FurneeHome để mở các luồng.</p>'}
-    </section>
-
-    <section class="tree-guidance">
-      <strong>Cách dùng</strong>
-      <span>1. Học toàn bộ</span>
-      <span>2. Chọn lộ trình cá nhân</span>
-      <span>3. Luyện câu giám khảo</span>
-      <span>4. Tiến độ chỉ trong phiên</span>
-    </section>
-  `;
-  bindTreeEvents();
-}
-
-function renderMemberCard(member) {
-  const course = courseById(`member-${member.id}`);
-  const path = member.nodeIds.map((nodeId) => nodesById.get(nodeId)?.label).filter(Boolean);
-
+function renderPhase(flow, phase, index) {
   return `
-    <article class="member-card member-${escapeHtml(member.id)}">
-      <header>
+    <article class="phase-card phase-${escapeHtml(phase.id)}">
+      <header class="phase-header">
+        <span class="phase-number">0${index + 1}</span>
         <div>
-          <span class="member-order">MỨC ${member.difficultyRank} · THUYẾT TRÌNH THỨ ${member.presentationOrder}</span>
-          <h2>${escapeHtml(member.name)}</h2>
+          <span class="phase-label">${escapeHtml(phase.title)}</span>
+          <p>${escapeHtml(phase.summary)}</p>
         </div>
-        <span class="difficulty-badge">${escapeHtml(member.difficultyLabel)}</span>
       </header>
-      <p class="member-focus">${escapeHtml(member.focus)}</p>
-
-      <h3>Học sâu theo luồng</h3>
-      <div class="member-path">
-        ${path.map((label, index) => `
-          ${index ? '<span class="path-arrow">→</span>' : ''}
-          <span class="path-step">${escapeHtml(label)}</span>
-        `).join('')}
-      </div>
-
-      <h3>Phần thuyết trình chính</h3>
-      <ol class="presentation-list">
-        ${member.presentation.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+      <ol class="milestone-list">
+        ${phase.milestones.map((milestone) => renderMilestone(flow, milestone)).join('')}
       </ol>
-
-      <p class="handoff"><strong>Câu chuyển:</strong> ${escapeHtml(member.handoff)}</p>
-      <button class="role-course-button" data-action="course" data-course-id="${escapeHtml(course.id)}" type="button">
-        Học phần của ${escapeHtml(member.name)} · ${course.cardIds.length} thẻ
-      </button>
     </article>
   `;
 }
 
-function renderRoles() {
-  state.view = 'roles';
-  state.courseId = null;
-  const commonCourse = COURSES.find((course) => course.kind === 'common');
-  const defenseCourse = COURSES.find((course) => course.kind === 'defense');
-  const presentationOrder = [...MEMBER_PATHS]
-    .sort((a, b) => a.presentationOrder - b.presentationOrder)
-    .map((member) => member.name)
-    .join(' → ');
+function renderMilestoneDetail(flow) {
+  const milestone = milestoneById(flow, state.milestoneId);
+  if (!milestone) return '';
 
-  app.innerHTML = `
-    <div class="roles-topbar">
-      <button class="back-button" data-action="back" type="button">← Cây kiến thức</button>
-      <span>Thứ tự thuyết trình: <strong>${escapeHtml(presentationOrder)}</strong></span>
-    </div>
+  const phase = flow.phases.find((item) => item.milestones.some((candidate) => candidate.id === milestone.id));
+  const cardIds = cardIdsForMilestone(flow, milestone);
+  const questionIds = questionIdsForMilestone(flow, milestone);
+  const questionCards = cardsFromIds(questionIds);
+  const nodeNames = milestone.nodeIds.map((nodeId) => nodesById.get(nodeId)?.label).filter(Boolean);
 
-    <section class="roles-intro">
-      <p class="eyebrow">LỘ TRÌNH 4 THÀNH VIÊN</p>
-      <h1>Học chung trước, đào sâu theo phần phụ trách</h1>
-      <p>Mức độ từ khó đến dễ: Hiệp → Phúc → Triều → Dũng. Phân công chỉ xác định phần trình bày chính; mọi người vẫn cần hiểu toàn bộ luồng.</p>
-    </section>
+  return `
+    <section id="milestone-detail" class="milestone-detail" tabindex="-1" aria-labelledby="milestone-detail-title">
+      <header>
+        <div>
+          <span class="eyebrow">${escapeHtml(phase.title)} · ${cardIds.length} thẻ</span>
+          <h2 id="milestone-detail-title">${escapeHtml(milestone.title)}</h2>
+        </div>
+        <button class="close-detail" data-action="close-detail" type="button" aria-label="Đóng chi tiết">×</button>
+      </header>
+      <p class="detail-summary">${escapeHtml(milestone.summary)}</p>
+      <p class="node-route"><strong>Luồng kiến thức:</strong> ${nodeNames.map(escapeHtml).join(' → ')}</p>
 
-    <section class="shared-plan">
-      <div>
-        <strong>Bước 1 · Nền tảng chung</strong>
-        <span>${commonCourse.cardIds.length} thẻ theo toàn bộ luồng dự án</span>
+      <div class="question-preview">
+        <div class="question-preview-heading">
+          <strong>Câu phản biện</strong>
+          <span>${questionIds.length} câu trong bước này</span>
+        </div>
+        <ol>
+          ${questionCards.slice(0, 2).map((card) => {
+            const meta = questionMeta(card.id);
+            return `
+              <li>
+                <span>${escapeHtml(card.prompt)}</span>
+                ${meta ? `<small>${escapeHtml(meta.likelihood)} · ${escapeHtml(meta.member.name)}</small>` : ''}
+              </li>
+            `;
+          }).join('')}
+        </ol>
+        ${questionIds.length > 2 ? `<span class="more-questions">+ ${questionIds.length - 2} câu khác</span>` : ''}
       </div>
-      <button data-action="course" data-course-id="${escapeHtml(commonCourse.id)}" type="button">Học chung</button>
-      <div>
-        <strong>Bước 2 · Luyện phản biện</strong>
-        <span>${DEFENSE_QUESTION_IDS.length} câu có khả năng giám khảo hỏi</span>
-      </div>
-      <button data-action="course" data-course-id="${escapeHtml(defenseCourse.id)}" type="button">Luyện câu hỏi</button>
-    </section>
 
-    <section class="role-grid" aria-label="Phân công học và thuyết trình">
-      ${MEMBER_PATHS.map(renderMemberCard).join('')}
+      <div class="detail-actions-row">
+        <button class="secondary-action" data-action="study-step" type="button">Học bước này · ${cardIds.length} thẻ</button>
+        <button class="primary-action" data-action="questions-step" type="button">Luyện câu hỏi · ${questionIds.length} câu</button>
+      </div>
     </section>
   `;
-  bindRoleEvents();
+}
+
+function renderFlow() {
+  state.view = 'flow';
+  const flow = flowById(state.flowId) || LEARNING_FLOWS[0];
+  const course = courseById(flow.courseId);
+  const member = flow.memberId ? memberById(flow.memberId) : null;
+  const learned = course.cardIds.filter((cardId) => state.mastered.has(cardId)).length;
+  const context = member
+    ? `${member.difficultyLabel} · thuyết trình thứ ${member.presentationOrder}`
+    : 'Luồng nền tảng cho cả 4 thành viên';
+
+  app.innerHTML = `
+    <section class="flow-heading">
+      <div>
+        <p class="eyebrow">SƠ ĐỒ HỌC THEO TRÌNH TỰ</p>
+        <h1>${escapeHtml(flow.title)}</h1>
+        <p class="lead">${escapeHtml(flow.summary)}</p>
+      </div>
+      <div class="session-score">
+        <strong>${learned}/${course.cardIds.length}</strong>
+        <span>thẻ đã thuộc<br>trong luồng này</span>
+      </div>
+    </section>
+
+    ${renderFlowTabs()}
+
+    <section class="flow-launch" aria-label="Bắt đầu học luồng hiện tại">
+      <div>
+        <span class="flow-owner">${escapeHtml(flow.owner)}</span>
+        <strong>${escapeHtml(context)}</strong>
+      </div>
+      <div class="flow-actions">
+        <button class="secondary-action" data-action="all-questions" type="button">Luyện tất cả · ${flow.questionIds.length} câu</button>
+        <button class="primary-action" data-action="course" type="button">Học toàn luồng · ${course.cardIds.length} thẻ</button>
+      </div>
+    </section>
+
+    <section
+      id="flow-overview"
+      class="flow-overview"
+      role="tabpanel"
+      aria-labelledby="flow-tab-${escapeHtml(flow.id)}"
+      aria-label="${escapeHtml(flow.tab)}: Đầu vào, Xử lý, Đầu ra"
+    >
+      <div class="flow-board">
+        ${renderPhase(flow, flow.phases[0], 0)}
+        <span class="flow-arrow" aria-hidden="true"></span>
+        ${renderPhase(flow, flow.phases[1], 1)}
+        <span class="flow-arrow" aria-hidden="true"></span>
+        ${renderPhase(flow, flow.phases[2], 2)}
+      </div>
+      ${renderMilestoneDetail(flow)}
+    </section>
+  `;
+  bindFlowEvents();
 }
 
 function renderSources(card) {
@@ -315,17 +280,19 @@ function detailButton(key, label) {
   return `<button class="detail-button ${open}" data-action="detail" data-detail="${key}" type="button">${label}</button>`;
 }
 
+function activeCards() {
+  return cardsFromIds(state.deckCardIds);
+}
+
 function renderDeck() {
+  state.view = 'deck';
   const cards = activeCards();
   const card = cards[state.index];
-  if (!card) return state.returnView === 'roles' ? renderRoles() : renderTree();
+  if (!card) return renderFlow();
 
   const node = nodesById.get(card.nodeId);
-  const course = state.courseId ? courseById(state.courseId) : null;
   const meta = questionMeta(card.id);
   const mastered = state.mastered.has(card.id);
-  const title = course ? course.title : node.label;
-  const backLabel = state.returnView === 'roles' ? 'Lộ trình 4 người' : 'Cây kiến thức';
   const questionBadge = meta
     ? `<span class="question-badge">${meta.likelihood} · ${escapeHtml(meta.member.name)} phụ trách</span>`
     : '';
@@ -370,11 +337,11 @@ function renderDeck() {
 
   app.innerHTML = `
     <div class="deck-topbar">
-      <button class="back-button" data-action="back" type="button">← ${backLabel}</button>
+      <button class="back-button" data-action="back" type="button">← Sơ đồ ${escapeHtml(flowById(state.flowId)?.tab || '')}</button>
       <div class="deck-node">
         <span class="node-number">${escapeHtml(node.order)}</span>
         <span>
-          <strong>${escapeHtml(title)}</strong>
+          <strong>${escapeHtml(state.deckTitle)}</strong>
           <small>${escapeHtml(node.label)} · ${escapeHtml(card.type)}</small>
         </span>
       </div>
@@ -408,82 +375,60 @@ function renderDeck() {
   bindDeckEvents();
 }
 
-function openNode(nodeId) {
-  state.view = 'deck';
-  state.returnView = 'tree';
-  state.nodeId = nodeId;
-  state.courseId = null;
-  state.index = 0;
-  resetCardFace();
-  renderDeck();
-}
-
-function openCourse(courseId, returnView) {
-  state.view = 'deck';
-  state.returnView = returnView;
-  state.nodeId = null;
-  state.courseId = courseId;
-  state.index = 0;
-  resetCardFace();
-  renderDeck();
-}
-
-function returnFromDeck() {
-  if (state.returnView === 'roles') renderRoles();
-  else renderTree();
-}
-
 function resetCardFace() {
   state.revealed = false;
   state.details.clear();
 }
 
-function bindCourseButtons(containerView) {
-  app.querySelectorAll('[data-action="course"]').forEach((button) => {
-    button.addEventListener('click', () => openCourse(button.dataset.courseId, containerView));
-  });
+function openCards(cardIds, title) {
+  if (!cardIds.length) return;
+  state.deckCardIds = [...cardIds];
+  state.deckTitle = title;
+  state.index = 0;
+  resetCardFace();
+  renderDeck();
 }
 
-function bindTreeEvents() {
-  app.querySelectorAll('[data-action="node"]').forEach((button) => {
-    button.addEventListener('click', () => openNode(button.dataset.nodeId));
-  });
-  app.querySelectorAll('[data-action="toggle"]').forEach((button) => {
-    button.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const nodeId = button.dataset.nodeId;
-      if (state.expanded.has(nodeId)) state.expanded.delete(nodeId);
-      else state.expanded.add(nodeId);
-      renderTree();
+function bindFlowEvents() {
+  const flow = flowById(state.flowId);
+  const course = courseById(flow.courseId);
+
+  app.querySelectorAll('[data-action="flow"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.flowId = button.dataset.flowId;
+      state.milestoneId = null;
+      renderFlow();
     });
   });
 
-  bindCourseButtons('tree');
-  app.querySelector('[data-action="roles"]')?.addEventListener('click', renderRoles);
+  app.querySelectorAll('[data-action="milestone"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const opening = state.milestoneId !== button.dataset.milestoneId;
+      state.milestoneId = opening ? button.dataset.milestoneId : null;
+      renderFlow();
+      if (opening) app.querySelector('#milestone-detail')?.scrollIntoView({ block: 'nearest' });
+    });
+  });
 
-  const finder = app.querySelector('#node-finder');
-  finder?.addEventListener('input', (event) => {
-    state.query = event.target.value;
-    renderTree();
-    app.querySelector('#node-finder')?.focus();
+  app.querySelector('[data-action="close-detail"]')?.addEventListener('click', () => {
+    state.milestoneId = null;
+    renderFlow();
   });
-  app.querySelector('[data-action="clear-search"]')?.addEventListener('click', () => {
-    state.query = '';
-    renderTree();
-  });
-  app.querySelector('[data-action="expand-all"]')?.addEventListener('click', () => {
-    FLOW_NODES.forEach((node) => state.expanded.add(node.id));
-    renderTree();
-  });
-  app.querySelector('[data-action="collapse-all"]')?.addEventListener('click', () => {
-    state.expanded = new Set(['project']);
-    renderTree();
-  });
-}
 
-function bindRoleEvents() {
-  app.querySelector('[data-action="back"]')?.addEventListener('click', renderTree);
-  bindCourseButtons('roles');
+  app.querySelector('[data-action="course"]')?.addEventListener('click', () => {
+    openCards(course.cardIds, course.title);
+  });
+  app.querySelector('[data-action="all-questions"]')?.addEventListener('click', () => {
+    openCards(flow.questionIds, `${flow.owner} · Câu phản biện`);
+  });
+
+  const milestone = milestoneById(flow, state.milestoneId);
+  app.querySelector('[data-action="study-step"]')?.addEventListener('click', () => {
+    openCards(cardIdsForMilestone(flow, milestone), milestone.title);
+  });
+  app.querySelector('[data-action="questions-step"]')?.addEventListener('click', () => {
+    openCards(questionIdsForMilestone(flow, milestone), `${milestone.title} · Câu phản biện`);
+  });
 }
 
 function bindDeckEvents() {
@@ -502,7 +447,7 @@ function bindDeckEvents() {
       renderDeck();
     });
   });
-  app.querySelector('[data-action="back"]')?.addEventListener('click', returnFromDeck);
+  app.querySelector('[data-action="back"]')?.addEventListener('click', renderFlow);
   app.querySelector('[data-action="previous"]')?.addEventListener('click', () => {
     if (state.index === 0) return;
     state.index -= 1;
@@ -510,7 +455,7 @@ function bindDeckEvents() {
     renderDeck();
   });
   app.querySelector('[data-action="next"]')?.addEventListener('click', () => {
-    if (state.index >= activeCards().length - 1) return returnFromDeck();
+    if (state.index >= activeCards().length - 1) return renderFlow();
     state.index += 1;
     resetCardFace();
     renderDeck();
@@ -524,18 +469,14 @@ function bindDeckEvents() {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (state.view === 'tree' && event.key === '/' && document.activeElement?.tagName !== 'INPUT') {
-    event.preventDefault();
-    app.querySelector('#node-finder')?.focus();
-    return;
-  }
-  if (state.view === 'roles' && event.key === 'Escape') {
-    renderTree();
+  if (state.view === 'flow' && event.key === 'Escape' && state.milestoneId) {
+    state.milestoneId = null;
+    renderFlow();
     return;
   }
   if (state.view !== 'deck') return;
 
-  if (event.code === 'Space') {
+  if (event.code === 'Space' && document.activeElement?.tagName !== 'BUTTON') {
     event.preventDefault();
     state.revealed = !state.revealed;
     if (!state.revealed) state.details.clear();
@@ -543,8 +484,8 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.key === 'ArrowRight') app.querySelector('[data-action="next"]')?.click();
   if (event.key === 'ArrowLeft') app.querySelector('[data-action="previous"]')?.click();
-  if (event.key === 'Escape') returnFromDeck();
+  if (event.key === 'Escape') renderFlow();
 });
 
 validateCurriculum();
-renderTree();
+renderFlow();

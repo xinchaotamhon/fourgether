@@ -75,7 +75,7 @@ const CORE_FLASHCARDS = [
   c('defense-bridge', 'defense', 'entry', 'Câu trả lời bảo vệ tốt có những phần nào?', 'Mục tiêu → input/cơ chế → output → giới hạn + source/test.', 'Khung này nối trải nghiệm với code và tránh slogan.', 'Chỉ kể React/Node/Mongo là đủ.', 'Trả lời “vì sao Canvas trước AI”?', 'Để thấy/chỉnh scene ngay và lỗi provider không mất scene.', [ref('START_HERE.md', 'Ranh giới phần trình bày đồ án')]),
   c('defend-prompt-priority', 'defend-prompt', 'mechanism', 'Prompt hay bố cục chuẩn quan trọng hơn?', 'Bổ trợ nhau: scene/guide giữ vị trí-tỷ lệ; prompt/facts/reference khóa identity/công năng.', 'Bàn ngồi bệt cần ràng buộc chân ngắn/mặt thấp, không ghế cao.', 'Prompt dài tự suy ra đúng layout.', 'Guide đúng nhưng thêm ghế cao: sửa đâu?', 'Tăng ràng buộc identity/công năng.', [ref('server/src/services/cloudflareImageService.js', 'buildRoomPrompt')]),
   c('defend-geometry-boundary', 'defend-geometry', 'boundary', 'Mốc tỷ lệ có thay prompt/reference hay đo 3D không?', 'Không; chỉ cải thiện scale gần cùng mặt phẳng. Ảnh 2D không đo chính xác toàn phòng.', 'Prompt/reference vẫn giữ identity; solver là hỗ trợ thị giác.', 'Hai điểm + cm là 3D reconstruction.', 'Mốc ở nền xa, sofa gần camera: nói gì?', 'Ước lượng kém tin cậy hơn và cho chỉnh tay.', [ref('client/src/utils/cameraSolver.js', 'estimateRoomCameraParameters')]),
-  c('defend-limit-claim', 'defend-limits', 'boundary', 'Không được tuyên bố quá mức điều gì?', 'Không gọi preview là đo 3D/chính xác tuyệt đối, quota vô hạn, public là quyền sửa, hay learning tree là runtime.', 'Mọi claim cần code/test/data; provider/ảnh đầu vào luôn có biến số.', 'Fallback nhiều provider xóa mọi giới hạn.', 'Có bảo đảm không đổi kiến trúc phòng không?', 'Không tuyệt đối; guide/prompt giảm rủi ro, output vẫn phụ thuộc provider.', [ref('START_HERE.md', 'Hợp đồng chức năng Room Studio')]),
+  c('defend-limit-claim', 'defend-limits', 'boundary', 'Không được tuyên bố quá mức điều gì?', 'Không gọi preview là đo 3D/chính xác tuyệt đối, quota vô hạn, public là quyền sửa, hay Fourgether là runtime.', 'Mọi claim cần code/test/data; provider/ảnh đầu vào luôn có biến số.', 'Fallback nhiều provider xóa mọi giới hạn.', 'Có bảo đảm không đổi kiến trúc phòng không?', 'Không tuyệt đối; guide/prompt giảm rủi ro, output vẫn phụ thuộc provider.', [ref('START_HERE.md', 'Hợp đồng chức năng Room Studio')]),
 
   c('project-proof', 'project', 'transfer', 'Khi bảo vệ feature nên trình bày theo thứ tự nào?', 'Input → cơ chế → output → boundary → source/test.', 'Khung tạo câu trả lời kiểm chứng được.', 'Tên framework là bằng chứng.', 'AI cho ảnh đẹp nhưng sai loại bàn có đạt mục tiêu?', 'Không, vì đúng identity/công năng là điều kiện cốt lõi.', [ref('START_HERE.md', 'Tiêu chí hoàn thành')]),
   c('inspiration-boundary', 'journey-inspiration', 'boundary', 'Vì sao inspiration không sửa scene placement hiện có?', 'Nó tạo kết quả mode riêng, placement thủ công vẫn nguyên.', 'Tách mode tránh nút ý tưởng phá công sức người dùng.', 'Gợi ý AI tối ưu scene đang đặt.', 'Đã đặt bàn ghế rồi mà muốn ý tưởng khác, giữ gì?', 'Giữ placements và tạo result inspiration riêng.', [ref('client/src/pages/RoomStudioPage.jsx', 'generateInspiration')]),
@@ -489,4 +489,133 @@ export const COURSES = [
     description: member.focus,
     cardIds: unique([...cardIdsForNodes(member.nodeIds), ...questionIdsFor(member)]),
   })),
+];
+
+const milestone = (id, title, summary, nodeIds) => ({ id, title, summary, nodeIds });
+const phase = (id, title, summary, milestones) => ({ id, title, summary, milestones });
+const memberQuestionIds = (memberId) => {
+  const member = MEMBER_PATHS.find((candidate) => candidate.id === memberId);
+  return member ? questionIdsFor(member) : [];
+};
+
+// Pedagogical sequences are explicit because the architecture graph has cross-links.
+// Each milestone points back to the canonical nodes and cards above.
+export const LEARNING_FLOWS = [
+  {
+    id: 'common',
+    tab: 'Toàn dự án',
+    owner: 'Cả nhóm',
+    courseId: 'furneehome-flow',
+    title: 'Từ căn phòng thật đến mẫu có thể dùng lại',
+    summary: 'Nhìn toàn bộ FurneeHome theo một trình tự trước khi học sâu từng phần.',
+    questionIds: DEFENSE_QUESTION_IDS,
+    phases: [
+      phase('input', 'Đầu vào', 'Người dùng mang nhu cầu và dữ liệu thật vào hệ thống.', [
+        milestone('common-problem', 'Bài toán cần giải', 'Xác định người dùng, khó khăn và giá trị FurneeHome cần tạo ra.', ['project', 'journey']),
+        milestone('common-materials', 'Ảnh phòng, sản phẩm và tài khoản', 'Nhận ảnh phòng, món nội thất có nguồn, mong muốn và trạng thái đăng nhập.', ['journey-discovery', 'journey-products', 'front-auth', 'front-products']),
+      ]),
+      phase('process', 'Xử lý', 'Frontend và backend biến dữ liệu đầu vào thành một yêu cầu tạo ảnh có kiểm soát.', [
+        milestone('common-scene', 'Dựng scene trên giao diện', 'Chọn chế độ, đặt món, chỉnh tỷ lệ và chuẩn bị trạng thái Room Studio.', ['journey-studio', 'journey-inspiration', 'journey-placement', 'journey-camera', 'frontend', 'front-router', 'front-room']),
+        milestone('common-request', 'Kiểm tra request', 'Xác thực, phân quyền, chuẩn hóa catalog, kiểm tra quota và dữ liệu gửi lên.', ['backend', 'back-auth', 'back-products', 'back-admin', 'back-preview', 'back-quota', 'data-import']),
+        milestone('common-generate', 'Tạo ảnh', 'Kết hợp prompt, facts, ảnh tham chiếu, bố cục và chuỗi provider fallback.', ['back-ai', 'defend-prompt', 'defend-geometry']),
+      ]),
+      phase('output', 'Đầu ra', 'Kết quả được hiển thị, lưu, chia sẻ và kiểm chứng.', [
+        milestone('common-result', 'Nhận kết quả', 'Giữ Canvas, hiển thị ảnh AI và xử lý lỗi mà không làm mất scene.', ['journey-result']),
+        milestone('common-share', 'Lưu và chia sẻ', 'Lưu đủ scene, công khai mẫu, thả tim và tạo bản dùng lại riêng.', ['journey-collection', 'journey-public', 'front-collections', 'front-storage', 'back-designs', 'data-models']),
+        milestone('common-proof', 'Vận hành và bảo vệ', 'Đồng bộ dữ liệu, deploy, chạy gate và trình bày đúng giới hạn.', ['dataops', 'data-sync', 'data-deploy', 'defense', 'defend-limits']),
+      ]),
+    ],
+  },
+  {
+    id: 'dung',
+    tab: 'Dũng',
+    owner: 'Dũng',
+    memberId: 'dung',
+    courseId: 'member-dung',
+    title: 'Giải thích bài toán và dẫn dắt luồng demo',
+    summary: 'Đi từ người dùng mục tiêu đến giá trị nhìn thấy và bằng chứng khi bảo vệ.',
+    questionIds: memberQuestionIds('dung'),
+    phases: [
+      phase('input', 'Đầu vào', 'Bắt đầu từ người dùng và nhu cầu thật.', [
+        milestone('dung-problem', 'Ai gặp vấn đề gì?', 'Giới thiệu đối tượng, khó khăn khi hình dung nội thất và phạm vi dự án.', ['project', 'journey', 'journey-discovery']),
+        milestone('dung-choice', 'Người dùng chọn gì?', 'Giải thích vai trò của sản phẩm thật trước khi tạo ảnh.', ['journey-products']),
+      ]),
+      phase('process', 'Xử lý', 'Kể lại hành trình chính bằng ngôn ngữ người dùng.', [
+        milestone('dung-demo', 'Demo hành trình', 'Chọn món hoặc Gợi ý AI, vào Room Studio rồi đặt sản phẩm.', ['journey-studio', 'journey-inspiration', 'journey-placement']),
+      ]),
+      phase('output', 'Đầu ra', 'Chốt giá trị và cách nhóm chứng minh sản phẩm hoạt động.', [
+        milestone('dung-value', 'Kết quả người dùng nhận được', 'Xem ảnh, lưu collection, công khai và dùng lại mẫu.', ['journey-result', 'journey-collection', 'journey-public']),
+        milestone('dung-proof', 'Bằng chứng và giới hạn', 'Nói rõ dữ liệu dùng chung, cách kiểm thử và điều không nên hứa quá mức.', ['defense', 'data-sync', 'defend-limits']),
+      ]),
+    ],
+  },
+  {
+    id: 'trieu',
+    tab: 'Triều',
+    owner: 'Triều',
+    memberId: 'trieu',
+    courseId: 'member-trieu',
+    title: 'Biến hành trình thành giao diện có thể thao tác',
+    summary: 'Theo dấu route, catalog, Room Studio, Collection và dữ liệu hiển thị.',
+    questionIds: memberQuestionIds('trieu'),
+    phases: [
+      phase('input', 'Đầu vào', 'Frontend nhận route, catalog và lựa chọn của người dùng.', [
+        milestone('trieu-catalog', 'Route và catalog', 'Mở đúng page, tải sản phẩm, lọc dữ liệu và chọn ảnh hợp lệ.', ['journey-discovery', 'journey-products', 'frontend', 'front-router', 'front-products', 'back-products']),
+      ]),
+      phase('process', 'Xử lý', 'Giao diện giữ state và quản trị dữ liệu cần dùng.', [
+        milestone('trieu-studio', 'Tương tác Room Studio', 'Chọn, kéo, đổi kích thước, viết mong muốn và chủ động bấm tạo ảnh.', ['journey-studio', 'journey-placement', 'front-room']),
+        milestone('trieu-admin', 'Nhập sản phẩm', 'Admin đưa URL và ảnh vào pipeline chuẩn hóa thay vì sửa dữ liệu thủ công.', ['back-admin', 'data-import']),
+      ]),
+      phase('output', 'Đầu ra', 'UI hiển thị kết quả nhất quán và dữ liệu có thể mở lại.', [
+        milestone('trieu-collection', 'Kết quả, Collection và Public', 'Hiển thị ảnh, lưu scene, mở gallery và chuyển mẫu sang Room Studio.', ['journey-result', 'journey-collection', 'journey-public', 'front-collections', 'front-storage']),
+        milestone('trieu-data', 'Dữ liệu hiển thị đúng', 'Hiểu model, đồng bộ và bằng chứng cho dữ liệu frontend đang dùng.', ['defense', 'dataops', 'data-models', 'data-sync']),
+      ]),
+    ],
+  },
+  {
+    id: 'phuc',
+    tab: 'Phúc',
+    owner: 'Phúc',
+    memberId: 'phuc',
+    courseId: 'member-phuc',
+    title: 'Bảo vệ dữ liệu, quyền và ownership ở backend',
+    summary: 'Theo request từ phiên đăng nhập đến MongoDB và response đúng quyền.',
+    questionIds: memberQuestionIds('phuc'),
+    phases: [
+      phase('input', 'Đầu vào', 'Backend nhận request cùng thông tin phiên và token.', [
+        milestone('phuc-request', 'Request, phiên và token', 'Phân biệt quyền hiển thị ở UI với trust boundary thật tại API.', ['front-router', 'front-auth', 'backend']),
+      ]),
+      phase('process', 'Xử lý', 'Middleware và controller kiểm tra quyền trước khi ghi dữ liệu.', [
+        milestone('phuc-security', 'Xác thực và phân quyền', 'Xử lý OTP, JWT, role Admin và payload catalog/import.', ['back-auth', 'back-products', 'back-admin', 'data-import']),
+        milestone('phuc-design', 'Ownership RoomDesign', 'Giữ owner, visibility, like và reuse/fork không sửa bản gốc.', ['back-designs', 'data-models']),
+      ]),
+      phase('output', 'Đầu ra', 'Trả đúng dữ liệu và lưu bền vững theo quyền.', [
+        milestone('phuc-public', 'Public và private', 'Cho phép đọc mẫu public nhưng vẫn bảo vệ thao tác thay đổi dữ liệu.', ['journey-public', 'front-collections']),
+        milestone('phuc-persist', 'Lưu, đồng bộ và deploy', 'Phân biệt cache phiên, MongoDB, JSON fallback và cấu hình deploy.', ['front-storage', 'data-sync', 'data-deploy', 'defense', 'defend-limits']),
+      ]),
+    ],
+  },
+  {
+    id: 'hiep',
+    tab: 'Hiệp',
+    owner: 'Hiệp',
+    memberId: 'hiep',
+    courseId: 'member-hiep',
+    title: 'Điều khiển pipeline tạo ảnh và nói đúng giới hạn',
+    summary: 'Theo dữ liệu hình ảnh từ scene đến provider, kết quả và khả năng phục hồi.',
+    questionIds: memberQuestionIds('hiep'),
+    phases: [
+      phase('input', 'Đầu vào', 'Pipeline cần ảnh, sản phẩm và bố cục đủ rõ.', [
+        milestone('hiep-scene', 'Ảnh phòng, sản phẩm và scene', 'Chuẩn bị mode, placements, brief, facts và mốc tỷ lệ tùy chọn.', ['journey-studio', 'journey-inspiration', 'journey-placement', 'journey-camera', 'front-room']),
+      ]),
+      phase('process', 'Xử lý', 'Hệ thống kiểm tra rồi tạo ảnh bằng evidence phù hợp.', [
+        milestone('hiep-validate', 'Validate, guide, mask và quota', 'Chặn input sai, giữ vùng sửa và quản lý một lượt dùng thử của khách.', ['back-preview', 'back-quota']),
+        milestone('hiep-provider', 'Prompt, reference và fallback', 'Khóa identity/công năng rồi thử provider hợp lệ theo cấu hình.', ['back-ai', 'defend-prompt', 'defend-geometry']),
+      ]),
+      phase('output', 'Đầu ra', 'Giữ kết quả hữu ích ngay cả khi AI có lỗi.', [
+        milestone('hiep-result', 'Canvas, ảnh AI và phục hồi lỗi', 'Hiển thị kết quả trong cùng khung, giữ scene và phân loại lỗi đúng.', ['journey-result']),
+        milestone('hiep-limit', 'Chất lượng và giới hạn', 'Giải thích cấu hình deploy, giới hạn ảnh 2D và bằng chứng chất lượng.', ['data-deploy', 'defend-limits']),
+      ]),
+    ],
+  },
 ];

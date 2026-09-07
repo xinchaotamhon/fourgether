@@ -34,6 +34,7 @@ test('Fourgether curriculum is complete and traceable', async () => {
     FLASHCARDS,
     DEFENSE_QUESTIONS,
     COURSES,
+    LEARNING_FLOWS,
   } = await loadCurriculum();
   const nodeIds = new Set(FLOW_NODES.map((node) => node.id));
   assert.equal(nodeIds.size, FLOW_NODES.length, 'node IDs must be unique');
@@ -97,6 +98,58 @@ test('Fourgether curriculum is complete and traceable', async () => {
   assert.equal(commonCourse.nodeIds.length, FLOW_NODES.length, 'common course covers every node');
   assert.equal(commonCourse.cardIds.length, FLASHCARDS.length - DEFENSE_QUESTIONS.length, 'common course contains every core card');
   commonCourse.cardIds.forEach((cardId) => assert.equal(supplementalIds.has(cardId), false, 'common course excludes supplemental examiner questions'));
+
+  assert.deepEqual(LEARNING_FLOWS.map((flow) => flow.id), ['common', 'dung', 'trieu', 'phuc', 'hiep']);
+});
+
+test('Fourgether maps every course and defense question into Input, Process and Output', async () => {
+  const {
+    FLOW_NODES,
+    FLASHCARDS,
+    COURSES,
+    LEARNING_FLOWS,
+    MEMBER_PATHS,
+  } = await loadCurriculum();
+  const nodeIds = new Set(FLOW_NODES.map((node) => node.id));
+  const cardsById = new Map(FLASHCARDS.map((card) => [card.id, card]));
+  const flowIds = new Set();
+  const milestoneIds = new Set();
+
+  assert.equal(LEARNING_FLOWS.length, 5, 'one common flow and four member flows');
+  for (const flow of LEARNING_FLOWS) {
+    assert.equal(flowIds.has(flow.id), false, `unique flow ${flow.id}`);
+    flowIds.add(flow.id);
+    assert.deepEqual(flow.phases.map((phase) => phase.id), ['input', 'process', 'output'], `${flow.id} keeps IPO order`);
+    const milestones = flow.phases.flatMap((phase) => phase.milestones);
+    const mappedNodes = milestones.flatMap((milestone) => milestone.nodeIds);
+    assert.equal(new Set(mappedNodes).size, mappedNodes.length, `${flow.id} maps each node once`);
+    mappedNodes.forEach((nodeId) => assert.ok(nodeIds.has(nodeId), `${flow.id} references node ${nodeId}`));
+
+    for (const milestone of milestones) {
+      assert.equal(milestoneIds.has(milestone.id), false, `unique milestone ${milestone.id}`);
+      milestoneIds.add(milestone.id);
+      assert.ok(milestone.title && milestone.summary && milestone.nodeIds.length, `${milestone.id} has learning content`);
+    }
+
+    const course = COURSES.find((candidate) => candidate.id === flow.courseId);
+    assert.ok(course, `${flow.id} references a course`);
+    course.cardIds.forEach((cardId) => {
+      const nodeId = cardsById.get(cardId)?.nodeId;
+      assert.ok(mappedNodes.includes(nodeId), `${flow.id} places course card ${cardId}`);
+    });
+    flow.questionIds.forEach((cardId) => {
+      const nodeId = cardsById.get(cardId)?.nodeId;
+      assert.equal(mappedNodes.filter((candidate) => candidate === nodeId).length, 1, `${flow.id} places question ${cardId} once`);
+    });
+  }
+
+  const common = LEARNING_FLOWS.find((flow) => flow.id === 'common');
+  assert.deepEqual(new Set(common.phases.flatMap((phase) => phase.milestones.flatMap((item) => item.nodeIds))), nodeIds);
+  MEMBER_PATHS.forEach((member) => {
+    const flow = LEARNING_FLOWS.find((candidate) => candidate.memberId === member.id);
+    assert.ok(flow, `${member.name} has a personal flow`);
+    assert.equal(flow.owner, member.name);
+  });
 });
 
 test('Fourgether divides presentation paths and examiner questions safely', async () => {
@@ -157,4 +210,11 @@ test('Fourgether remains a no-storage static learning tool', () => {
   assert.doesNotMatch(code, /\b(?:localStorage|sessionStorage)\s*\./, 'Web Storage API is forbidden');
   assert.doesNotMatch(code, /\bindexedDB\s*\./, 'IndexedDB is forbidden');
   assert.doesNotMatch(code, /(?:navigator\.)?serviceWorker\s*\./, 'service worker is forbidden');
+  assert.match(code, /Đầu vào/);
+  assert.match(code, /Xử lý/);
+  assert.match(code, /Đầu ra/);
+  assert.match(code, /Luyện câu hỏi/);
+  assert.match(code, /@media \(max-width: 900px\)/);
+  assert.match(code, /\.flow-arrow::before \{ content: "↓"/);
+  assert.match(code, /html, body \{ overflow-x: hidden; \}/);
 });
