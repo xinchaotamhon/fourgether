@@ -1,9 +1,12 @@
 import {
   COURSES,
+  DEFENSE_QUESTIONS,
   FLASHCARDS,
   FLOW_NODES,
+  IMPORTANT_FUNCTIONS,
   LEARNING_FLOWS,
   MEMBER_PATHS,
+  PRESENTATION_DEMOS,
 } from './data/flashcards.js';
 
 // Progress lives only in memory. Reloading starts a new learning session.
@@ -22,6 +25,7 @@ const state = {
 const app = document.getElementById('app');
 const nodesById = new Map(FLOW_NODES.map((node) => [node.id, node]));
 const cardsById = new Map(FLASHCARDS.map((card) => [card.id, card]));
+const supplementalQuestionIds = new Set(DEFENSE_QUESTIONS.map((card) => card.id));
 
 const flowById = (flowId) => LEARNING_FLOWS.find((flow) => flow.id === flowId);
 const courseById = (courseId) => COURSES.find((course) => course.id === courseId);
@@ -34,6 +38,34 @@ const escapeHtml = (value) => String(value ?? '').replace(
   (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character],
 );
 
+const intersects = (left = [], right = []) => left.some((item) => right.includes(item));
+const presenterFor = (flow, milestone) => milestone.presenter || flow.owner;
+
+function coreCardsForMilestone(flow, milestone) {
+  return cardsFromIds(cardIdsForMilestone(flow, milestone))
+    .filter((card) => !supplementalQuestionIds.has(card.id));
+}
+
+function talkingPointsForMilestone(flow, milestone) {
+  const points = [
+    milestone.summary,
+    ...coreCardsForMilestone(flow, milestone).map((card) => card.modelAnswer),
+  ];
+  return [...new Set(points.filter(Boolean))].slice(0, 3);
+}
+
+function demosForMilestone(milestone) {
+  return PRESENTATION_DEMOS
+    .filter((demo) => intersects(milestone.nodeIds, demo.nodeIds))
+    .slice(0, 3);
+}
+
+function functionsForMilestone(milestone) {
+  return IMPORTANT_FUNCTIONS
+    .filter((item) => intersects(milestone.nodeIds, item.nodeIds))
+    .slice(0, 3);
+}
+
 function cardIdsForMilestone(flow, milestone) {
   const nodeIds = new Set(milestone.nodeIds);
   const course = courseById(flow.courseId);
@@ -42,7 +74,15 @@ function cardIdsForMilestone(flow, milestone) {
 
 function questionIdsForMilestone(flow, milestone) {
   const nodeIds = new Set(milestone.nodeIds);
-  return flow.questionIds.filter((cardId) => nodeIds.has(cardsById.get(cardId)?.nodeId));
+  const presenter = presenterFor(flow, milestone);
+  const priority = (cardId) => {
+    const meta = questionMeta(cardId);
+    if (!meta) return 4;
+    return (meta.member.name === presenter ? 0 : 2) + (meta.likelihood === 'Khả năng cao' ? 0 : 1);
+  };
+  return flow.questionIds
+    .filter((cardId) => nodeIds.has(cardsById.get(cardId)?.nodeId))
+    .sort((left, right) => priority(left) - priority(right));
 }
 
 function questionMeta(cardId) {
@@ -116,9 +156,8 @@ function renderFlowTabs() {
 }
 
 function renderMilestone(flow, milestone) {
-  const cardIds = cardIdsForMilestone(flow, milestone);
   const questionIds = questionIdsForMilestone(flow, milestone);
-  const learned = cardIds.filter((cardId) => state.mastered.has(cardId)).length;
+  const functionCount = functionsForMilestone(milestone).length;
   const active = milestone.id === state.milestoneId;
 
   return `
@@ -134,7 +173,7 @@ function renderMilestone(flow, milestone) {
         <span class="milestone-title">${escapeHtml(milestone.title)}</span>
         <span class="milestone-summary">${escapeHtml(milestone.summary)}</span>
         <span class="milestone-meta">
-          <span>${learned}/${cardIds.length} thẻ</span>
+          <span>${escapeHtml(presenterFor(flow, milestone))}${functionCount ? ` · ${functionCount} hàm chính` : ''}</span>
           <span class="question-count">? ${questionIds.length} câu</span>
         </span>
       </button>
@@ -163,41 +202,102 @@ function renderMilestoneDetail(flow) {
   const milestone = milestoneById(flow, state.milestoneId);
   if (!milestone) return '';
 
+  const milestones = milestonesOf(flow);
+  const stepIndex = milestones.findIndex((item) => item.id === milestone.id);
+  const previous = milestones[stepIndex - 1];
+  const next = milestones[stepIndex + 1];
   const phase = flow.phases.find((item) => item.milestones.some((candidate) => candidate.id === milestone.id));
   const cardIds = cardIdsForMilestone(flow, milestone);
   const questionIds = questionIdsForMilestone(flow, milestone);
   const questionCards = cardsFromIds(questionIds);
+  const talkingPoints = talkingPointsForMilestone(flow, milestone);
+  const demoSteps = demosForMilestone(milestone);
+  const importantFunctions = functionsForMilestone(milestone);
   const nodeNames = milestone.nodeIds.map((nodeId) => nodesById.get(nodeId)?.label).filter(Boolean);
+  const transition = next
+    ? `${presenterFor(flow, next)} tiếp: ${next.title.replace(/^.*? · /, '')}`
+    : memberById(flow.memberId)?.handoff || 'Chốt bằng kết quả, giới hạn và bằng chứng đã demo.';
 
   return `
     <section id="milestone-detail" class="milestone-detail" tabindex="-1" aria-labelledby="milestone-detail-title">
       <header>
         <div>
-          <span class="eyebrow">${escapeHtml(phase.title)} · ${cardIds.length} thẻ</span>
+          <span class="eyebrow">BƯỚC ${stepIndex + 1}/${milestones.length} · ${escapeHtml(phase.title)}</span>
           <h2 id="milestone-detail-title">${escapeHtml(milestone.title)}</h2>
+          <span class="presenter-chip">${escapeHtml(presenterFor(flow, milestone))} trình bày</span>
         </div>
         <button class="close-detail" data-action="close-detail" type="button" aria-label="Đóng chi tiết">×</button>
       </header>
-      <p class="detail-summary">${escapeHtml(milestone.summary)}</p>
-      <p class="node-route"><strong>Luồng kiến thức:</strong> ${nodeNames.map(escapeHtml).join(' → ')}</p>
 
-      <div class="question-preview">
+      <div class="presentation-guide">
+        <section class="guide-panel talking-panel">
+          <h3>Ý chính · tự diễn đạt</h3>
+          <ul>
+            ${talkingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join('')}
+          </ul>
+        </section>
+
+        <section class="guide-panel demo-panel">
+          <h3>Demo trực tiếp</h3>
+          <ol class="demo-list">
+            ${demoSteps.map((step) => `
+              <li>
+                <p><b>Làm:</b> ${escapeHtml(step.action)}</p>
+                <p><b>Thấy:</b> ${escapeHtml(step.expected)}</p>
+                <details><summary>Nếu demo lỗi</summary><p>${escapeHtml(step.fallback)}</p></details>
+              </li>
+            `).join('')}
+          </ol>
+        </section>
+      </div>
+
+      ${importantFunctions.length ? `
+        <section class="code-guide">
+          <div class="section-heading">
+            <h3>Hàm quan trọng</h3>
+          </div>
+          <div class="function-grid">
+            ${importantFunctions.map((item) => `
+              <article class="function-card">
+                <code>${escapeHtml(item.name)}()</code>
+                <p>${escapeHtml(item.purpose)}</p>
+                <span class="function-io"><b>Nhận:</b> ${escapeHtml(item.input)} <i>→</i> <b>Trả:</b> ${escapeHtml(item.output)}</span>
+                <small>${escapeHtml(item.path)} · ${escapeHtml(item.symbol)}</small>
+              </article>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+
+      <section class="question-preview">
         <div class="question-preview-heading">
-          <strong>Câu phản biện</strong>
-          <span>${questionIds.length} câu trong bước này</span>
+          <strong>Giám khảo có thể hỏi ở bước này</strong>
+          <span>${questionIds.length} câu</span>
         </div>
-        <ol>
-          ${questionCards.slice(0, 2).map((card) => {
+        <div class="defense-question-list">
+          ${questionCards.slice(0, 3).map((card) => {
             const meta = questionMeta(card.id);
             return `
-              <li>
-                <span>${escapeHtml(card.prompt)}</span>
-                ${meta ? `<small>${escapeHtml(meta.likelihood)} · ${escapeHtml(meta.member.name)}</small>` : ''}
-              </li>
+              <details class="defense-question">
+                <summary>${escapeHtml(card.prompt)}</summary>
+                <p>${escapeHtml(card.modelAnswer)}</p>
+                ${meta ? `<small>${escapeHtml(meta.likelihood)} · ${escapeHtml(meta.member.name)} trả lời</small>` : ''}
+              </details>
             `;
           }).join('')}
-        </ol>
-        ${questionIds.length > 2 ? `<span class="more-questions">+ ${questionIds.length - 2} câu khác</span>` : ''}
+        </div>
+        ${questionIds.length > 3 ? `<span class="more-questions">+ ${questionIds.length - 3} câu khác trong bộ luyện</span>` : ''}
+      </section>
+
+      <details class="node-route">
+        <summary>Phạm vi kiến thức của bước</summary>
+        <p>${nodeNames.map(escapeHtml).join(' → ')}</p>
+      </details>
+
+      <div class="step-navigation">
+        <button class="secondary-action" data-action="previous-step" type="button" ${previous ? '' : 'disabled'}>← Bước trước</button>
+        <p><b>Bàn giao:</b> ${escapeHtml(transition)}</p>
+        <button class="primary-action" data-action="next-step" type="button">${next ? 'Bước tiếp →' : 'Kết thúc luồng'}</button>
       </div>
 
       <div class="detail-actions-row">
@@ -221,7 +321,7 @@ function renderFlow() {
   app.innerHTML = `
     <section class="flow-heading">
       <div>
-        <p class="eyebrow">SƠ ĐỒ HỌC THEO TRÌNH TỰ</p>
+        <p class="eyebrow">LUỒNG THUYẾT TRÌNH · DEMO · PHẢN BIỆN</p>
         <h1>${escapeHtml(flow.title)}</h1>
         <p class="lead">${escapeHtml(flow.summary)}</p>
       </div>
@@ -240,7 +340,8 @@ function renderFlow() {
       </div>
       <div class="flow-actions">
         <button class="secondary-action" data-action="all-questions" type="button">Luyện tất cả · ${flow.questionIds.length} câu</button>
-        <button class="primary-action" data-action="course" type="button">Học toàn luồng · ${course.cardIds.length} thẻ</button>
+        <button class="secondary-action" data-action="course" type="button">Học thẻ · ${course.cardIds.length}</button>
+        <button class="primary-action" data-action="rehearse" type="button">Diễn tập từ bước 1</button>
       </div>
     </section>
 
@@ -389,6 +490,12 @@ function openCards(cardIds, title) {
   renderDeck();
 }
 
+function openMilestone(milestoneId) {
+  state.milestoneId = milestoneId;
+  renderFlow();
+  app.querySelector('#milestone-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 function bindFlowEvents() {
   const flow = flowById(state.flowId);
   const course = courseById(flow.courseId);
@@ -404,9 +511,11 @@ function bindFlowEvents() {
   app.querySelectorAll('[data-action="milestone"]').forEach((button) => {
     button.addEventListener('click', () => {
       const opening = state.milestoneId !== button.dataset.milestoneId;
-      state.milestoneId = opening ? button.dataset.milestoneId : null;
-      renderFlow();
-      if (opening) app.querySelector('#milestone-detail')?.scrollIntoView({ block: 'nearest' });
+      if (opening) openMilestone(button.dataset.milestoneId);
+      else {
+        state.milestoneId = null;
+        renderFlow();
+      }
     });
   });
 
@@ -421,8 +530,24 @@ function bindFlowEvents() {
   app.querySelector('[data-action="all-questions"]')?.addEventListener('click', () => {
     openCards(flow.questionIds, `${flow.owner} · Câu phản biện`);
   });
+  app.querySelector('[data-action="rehearse"]')?.addEventListener('click', () => {
+    openMilestone(milestonesOf(flow)[0]?.id);
+  });
 
   const milestone = milestoneById(flow, state.milestoneId);
+  const milestones = milestonesOf(flow);
+  const milestoneIndex = milestones.findIndex((item) => item.id === milestone?.id);
+  app.querySelector('[data-action="previous-step"]')?.addEventListener('click', () => {
+    if (milestoneIndex > 0) openMilestone(milestones[milestoneIndex - 1].id);
+  });
+  app.querySelector('[data-action="next-step"]')?.addEventListener('click', () => {
+    if (milestoneIndex < milestones.length - 1) openMilestone(milestones[milestoneIndex + 1].id);
+    else {
+      state.milestoneId = null;
+      renderFlow();
+      app.querySelector('#flow-overview')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  });
   app.querySelector('[data-action="study-step"]')?.addEventListener('click', () => {
     openCards(cardIdsForMilestone(flow, milestone), milestone.title);
   });

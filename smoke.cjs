@@ -205,6 +205,46 @@ test('Fourgether divides presentation paths and examiner questions safely', asyn
   }
 });
 
+test('Fourgether rehearses concise talking points, live demo and important functions', async () => {
+  const {
+    LEARNING_FLOWS,
+    PRESENTATION_DEMOS,
+    IMPORTANT_FUNCTIONS,
+  } = await loadCurriculum();
+  const intersects = (left, right) => left.some((item) => right.includes(item));
+  const common = LEARNING_FLOWS.find((flow) => flow.id === 'common');
+  const commonMilestones = common.phases.flatMap((phase) => phase.milestones);
+
+  assert.deepEqual(
+    commonMilestones.map((milestone) => milestone.presenter),
+    ['Dũng', 'Triều', 'Phúc', 'Hiệp', 'Hiệp'],
+    'the common rehearsal follows the team handoff order',
+  );
+  assert.ok(PRESENTATION_DEMOS.length >= 10, 'the rehearsal covers the main live-demo checkpoints');
+  assert.ok(IMPORTANT_FUNCTIONS.length >= 15, 'the defense guide explains a focused set of important functions');
+
+  for (const flow of LEARNING_FLOWS) {
+    for (const milestone of flow.phases.flatMap((phase) => phase.milestones)) {
+      assert.ok(
+        PRESENTATION_DEMOS.some((demo) => intersects(milestone.nodeIds, demo.nodeIds)),
+        `${milestone.id} has a demo action, visible result and fallback`,
+      );
+    }
+  }
+
+  const functionNames = new Set();
+  for (const item of IMPORTANT_FUNCTIONS) {
+    assert.ok(!functionNames.has(item.name), `unique important function ${item.name}`);
+    functionNames.add(item.name);
+    for (const key of ['symbol', 'path', 'purpose', 'input', 'output']) assert.ok(item[key], `${item.name} has ${key}`);
+    if (furneehomeRoot) {
+      const sourcePath = path.resolve(furneehomeRoot, item.path);
+      assert.ok(fs.existsSync(sourcePath), `${item.name} source exists`);
+      assert.ok(fs.readFileSync(sourcePath, 'utf8').includes(item.symbol), `${item.name} symbol exists in source`);
+    }
+  }
+});
+
 test('Fourgether remains a no-storage static learning tool', () => {
   const code = ['app.js', 'data/flashcards.js', 'index.html', 'style.css'].map((file) => fs.readFileSync(path.join(fourgetherRoot, file), 'utf8')).join('\n');
   assert.doesNotMatch(code, /\b(?:localStorage|sessionStorage)\s*\./, 'Web Storage API is forbidden');
@@ -214,6 +254,11 @@ test('Fourgether remains a no-storage static learning tool', () => {
   assert.match(code, /Xử lý/);
   assert.match(code, /Đầu ra/);
   assert.match(code, /Luyện câu hỏi/);
+  assert.match(code, /Ý chính · tự diễn đạt/);
+  assert.match(code, /Demo trực tiếp/);
+  assert.match(code, /Hàm quan trọng/);
+  assert.match(code, /Diễn tập từ bước 1/);
+  assert.match(code, /data-action="next-step"/);
   assert.match(code, /@media \(max-width: 900px\)/);
   assert.match(code, /\.flow-arrow::before \{ content: "↓"/);
   assert.match(code, /html, body \{ overflow-x: hidden; \}/);

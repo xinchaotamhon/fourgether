@@ -491,7 +491,7 @@ export const COURSES = [
   })),
 ];
 
-const milestone = (id, title, summary, nodeIds) => ({ id, title, summary, nodeIds });
+const milestone = (id, title, summary, nodeIds, presenter = '') => ({ id, title, summary, nodeIds, presenter });
 const phase = (id, title, summary, milestones) => ({ id, title, summary, milestones });
 const memberQuestionIds = (memberId) => {
   const member = MEMBER_PATHS.find((candidate) => candidate.id === memberId);
@@ -506,23 +506,20 @@ export const LEARNING_FLOWS = [
     tab: 'Toàn dự án',
     owner: 'Cả nhóm',
     courseId: 'furneehome-flow',
-    title: 'Từ căn phòng thật đến mẫu có thể dùng lại',
-    summary: 'Nhìn toàn bộ FurneeHome theo một trình tự trước khi học sâu từng phần.',
+    title: 'Luồng thuyết trình và demo của cả nhóm',
+    summary: 'Đi một mạch từ bài toán đến kết quả, đồng thời bàn giao đúng phần của từng thành viên.',
     questionIds: DEFENSE_QUESTION_IDS,
     phases: [
-      phase('input', 'Đầu vào', 'Người dùng mang nhu cầu và dữ liệu thật vào hệ thống.', [
-        milestone('common-problem', 'Bài toán cần giải', 'Xác định người dùng, khó khăn và giá trị FurneeHome cần tạo ra.', ['project', 'journey']),
-        milestone('common-materials', 'Ảnh phòng, sản phẩm và tài khoản', 'Nhận ảnh phòng, món nội thất có nguồn, mong muốn và trạng thái đăng nhập.', ['journey-discovery', 'journey-products', 'front-auth', 'front-products']),
+      phase('input', 'Đầu vào', 'Dũng mở đầu bằng người dùng, vấn đề và dữ liệu mà hệ thống nhận.', [
+        milestone('common-dung', 'Dũng · Bài toán và hành trình', 'Nêu người dùng, vấn đề, mục tiêu rồi dẫn vào việc chọn sản phẩm thật.', ['project', 'journey', 'journey-discovery', 'journey-products'], 'Dũng'),
       ]),
-      phase('process', 'Xử lý', 'Frontend và backend biến dữ liệu đầu vào thành một yêu cầu tạo ảnh có kiểm soát.', [
-        milestone('common-scene', 'Dựng scene trên giao diện', 'Chọn chế độ, đặt món, chỉnh tỷ lệ và chuẩn bị trạng thái Room Studio.', ['journey-studio', 'journey-inspiration', 'journey-placement', 'journey-camera', 'frontend', 'front-router', 'front-room']),
-        milestone('common-request', 'Kiểm tra request', 'Xác thực, phân quyền, chuẩn hóa catalog, kiểm tra quota và dữ liệu gửi lên.', ['backend', 'back-auth', 'back-products', 'back-admin', 'back-preview', 'back-quota', 'data-import']),
-        milestone('common-generate', 'Tạo ảnh', 'Kết hợp prompt, facts, ảnh tham chiếu, bố cục và chuỗi provider fallback.', ['back-ai', 'defend-prompt', 'defend-geometry']),
+      phase('process', 'Xử lý', 'Ba thành viên nối tiếp frontend, backend và pipeline AI trên cùng một lượt demo.', [
+        milestone('common-trieu', 'Triều · Giao diện và dựng scene', 'Mở catalog, chọn món, kéo vào ảnh phòng và chỉnh trực tiếp trên scene.', ['journey-studio', 'journey-inspiration', 'journey-placement', 'journey-camera', 'frontend', 'front-router', 'front-products', 'front-room'], 'Triều'),
+        milestone('common-phuc', 'Phúc · API, quyền và dữ liệu', 'Giải thích request đi qua xác thực, CRUD, MongoDB, Collection và Public.', ['journey-collection', 'journey-public', 'front-auth', 'front-collections', 'front-storage', 'backend', 'back-auth', 'back-products', 'back-admin', 'back-designs', 'dataops', 'data-models', 'data-import', 'data-sync'], 'Phúc'),
+        milestone('common-hiep', 'Hiệp · Kiểm tra và tạo ảnh AI', 'Kiểm tra input/quota, dựng prompt và thử provider theo thứ tự fallback.', ['back-preview', 'back-quota', 'back-ai', 'defend-prompt', 'defend-geometry'], 'Hiệp'),
       ]),
-      phase('output', 'Đầu ra', 'Kết quả được hiển thị, lưu, chia sẻ và kiểm chứng.', [
-        milestone('common-result', 'Nhận kết quả', 'Giữ Canvas, hiển thị ảnh AI và xử lý lỗi mà không làm mất scene.', ['journey-result']),
-        milestone('common-share', 'Lưu và chia sẻ', 'Lưu đủ scene, công khai mẫu, thả tim và tạo bản dùng lại riêng.', ['journey-collection', 'journey-public', 'front-collections', 'front-storage', 'back-designs', 'data-models']),
-        milestone('common-proof', 'Vận hành và bảo vệ', 'Đồng bộ dữ liệu, deploy, chạy gate và trình bày đúng giới hạn.', ['dataops', 'data-sync', 'data-deploy', 'defense', 'defend-limits']),
+      phase('output', 'Đầu ra', 'Hiệp chốt kết quả nhìn thấy, khả năng phục hồi và giới hạn phải nói đúng.', [
+        milestone('common-close', 'Hiệp · Kết quả và giới hạn', 'So sánh ảnh trước/sau, chỉ ra fallback và kết luận bằng bằng chứng thay vì hứa tuyệt đối.', ['journey-result', 'data-deploy', 'defense', 'defend-limits'], 'Hiệp'),
       ]),
     ],
   },
@@ -618,4 +615,53 @@ export const LEARNING_FLOWS = [
       ]),
     ],
   },
+];
+
+const demo = (id, nodeIds, action, expected, fallback) => ({ id, nodeIds, action, expected, fallback });
+
+// Demo checkpoints are reused by the common flow and each member flow.
+export const PRESENTATION_DEMOS = [
+  demo('home', ['project', 'journey', 'journey-discovery'], 'Mở Trang chủ và nêu đúng đối tượng, vấn đề, mục tiêu.', 'Người nghe hiểu FurneeHome giúp thử nội thất trên ảnh phòng thật.', 'Dùng ảnh chụp Trang chủ và tiếp tục trình bày luồng.'),
+  demo('products', ['journey-products', 'front-products', 'back-products'], 'Tìm một sản phẩm, mở thẻ sản phẩm rồi chọn thử trong phòng.', 'Sản phẩm thật, ảnh tham chiếu và nguồn mua đi vào Room Studio.', 'Dùng sản phẩm đã tải sẵn; không phụ thuộc Shopee lúc bảo vệ.'),
+  demo('auth', ['front-auth', 'back-auth'], 'Đăng nhập bằng tài khoản đã chuẩn bị rồi mở chức năng cần xác thực.', 'Phiên đăng nhập được nhận và API cho phép đúng quyền.', 'Giữ sẵn một phiên đăng nhập; nếu hết phiên thì đăng nhập lại.'),
+  demo('studio', ['journey-studio', 'journey-placement', 'front-room'], 'Tải ảnh phòng, kéo sản phẩm vào ảnh rồi đổi vị trí và kích thước.', 'Scene đổi ngay trên cùng khung nhưng chưa tự gọi AI.', 'Giữ scene mẫu đã lưu để vẫn giải thích được thao tác.'),
+  demo('scale', ['journey-camera', 'defend-geometry'], 'Đặt hai mốc trên cạnh biết kích thước và nhập chiều dài thật.', 'Hệ thống có tỷ lệ tham khảo gần vị trí món đồ.', 'Bỏ qua mốc và chỉnh tay; không tuyên bố đây là đo 3D.'),
+  demo('inspiration', ['journey-inspiration'], 'Tải ảnh phòng rồi bấm Gợi ý AI.', 'Hệ thống chọn tối đa ba sản phẩm có ảnh thật và bắt đầu tạo ý tưởng.', 'Dùng ảnh kết quả đã chuẩn bị và nêu rõ provider đang lỗi.'),
+  demo('generate', ['back-preview', 'back-quota', 'back-ai', 'defend-prompt'], 'Bấm Tạo ảnh sau khi scene đã sẵn sàng.', 'Hiện trạng thái tải, gửi guide/reference/prompt và nhận ảnh từ provider hợp lệ.', 'Giữ Canvas, scene và ảnh kết quả dự phòng để chứng minh luồng.'),
+  demo('result', ['journey-result'], 'Chuyển giữa Ảnh gốc và Ảnh AI gần nhất ngay trong khung.', 'Người xem đối chiếu được trước/sau mà không mất scene.', 'Mở ảnh kết quả dự phòng, không giả rằng request vừa thành công.'),
+  demo('collection', ['journey-collection', 'front-collections', 'front-storage', 'back-designs'], 'Lưu mẫu, mở Bộ sưu tập rồi dùng lại mẫu vừa lưu.', 'Ảnh, placements, brief và cài đặt được khôi phục để chỉnh tiếp.', 'Dùng mẫu đã lưu trước; nói rõ dữ liệu mới chưa ghi được.'),
+  demo('public', ['journey-public'], 'Công khai một mẫu, thả tim rồi bấm Sử dụng mẫu.', 'Gallery hiển thị tác giả; reuse tạo bản riêng và không sửa bản gốc.', 'Mở mẫu public đã chuẩn bị sẵn.'),
+  demo('admin', ['back-admin', 'data-import'], 'Đăng nhập Admin, nhập URL hoặc ảnh sản phẩm rồi lưu.', 'Sản phẩm được chuẩn hóa và xuất hiện trong danh sách quản trị/catalog.', 'Dùng sản phẩm có sẵn; import Shopee chỉ là công cụ nhập liệu phụ.'),
+  demo('data', ['dataops', 'data-models', 'data-sync'], 'Tải lại catalog hoặc mở ở một trình duyệt khác sau khi thêm dữ liệu.', 'Dữ liệu dùng chung đọc từ MongoDB; JSON chỉ là fallback có kiểm soát.', 'Mở JSON fallback và nói rõ trạng thái MongoDB.'),
+  demo('deploy', ['data-deploy', 'defense', 'defend-limits'], 'Mở bản deploy và chạy một đường đi ngắn đã chuẩn bị.', 'Frontend, backend, database và secret kết nối đúng môi trường.', 'Chuyển sang localhost hoặc video/ảnh dự phòng và nêu đúng lỗi ngoài hệ thống.'),
+];
+
+const fn = (name, symbol, path, nodeIds, purpose, input, output) => ({
+  name, symbol, path, nodeIds, purpose, input, output,
+});
+
+// Chỉ giữ các hàm đủ quan trọng để giải thích trong lúc bảo vệ.
+export const IMPORTANT_FUNCTIONS = [
+  fn('ProductListPage', 'ProductListPage', 'client/src/pages/ProductListPage.jsx', ['journey-discovery', 'front-products'], 'Tải, tìm, lọc và sắp xếp catalog.', 'Danh sách sản phẩm + từ khóa/bộ lọc', 'Danh sách sản phẩm đang hiển thị'),
+  fn('ProductCard', 'ProductCard', 'client/src/components/product/ProductCard.jsx', ['journey-products'], 'Hiển thị một sản phẩm và chuyển món được chọn sang Room Studio.', 'Một product', 'Thẻ sản phẩm + thao tác thử trong phòng'),
+  fn('saveSession', 'saveSession', 'client/src/context/AuthContext.jsx', ['front-auth'], 'Giữ token và người dùng sau khi đăng nhập.', 'Session từ Auth API', 'Trạng thái đăng nhập cho các request sau'),
+  fn('requireAdmin', 'requireAdmin', 'server/src/middleware/authMiddleware.js', ['back-auth', 'back-admin'], 'Chặn request nếu tài khoản không có role Admin.', 'req.user đã xác thực', 'Cho đi tiếp hoặc trả lỗi 403'),
+  fn('RoomStudioPage', 'RoomStudioPage', 'client/src/pages/RoomStudioPage.jsx', ['journey-studio', 'front-room'], 'Điều phối ảnh phòng, scene, brief và lượt tạo ảnh.', 'Ảnh phòng + sản phẩm + thao tác người dùng', 'Scene chỉnh được và request tạo ảnh'),
+  fn('createPlacement', 'createPlacement', 'client/src/pages/RoomStudioPage.jsx', ['journey-placement', 'front-room'], 'Tạo một món trong scene với vị trí và biến đổi ban đầu.', 'Product + target + zIndex + scale', 'Placement có snapshot, xoay, lật và lớp'),
+  fn('getScaleFromReference', 'getScaleFromReference', 'client/src/pages/RoomStudioPage.jsx', ['journey-camera'], 'Ước lượng scale từ hai mốc và chiều dài thật.', 'Product + target + mốc + kích thước ảnh', 'Scale được giới hạn để người dùng chỉnh tiếp'),
+  fn('createRoomPreviewImages', 'createRoomPreviewImages', 'client/src/utils/roomPreviewCanvas.js', ['front-room', 'back-preview'], 'Vẽ composite, guide và mask từ toàn bộ scene.', 'Ảnh phòng + placements + ảnh sản phẩm', 'Các data URL dùng để xem trước và gửi AI'),
+  fn('createRoomPreview', 'createRoomPreview', 'client/src/services/roomPreviewService.js', ['front-room', 'back-preview'], 'Gửi payload tạo ảnh tới backend và chuẩn hóa lỗi trả về.', 'Payload scene + token + signal', 'Kết quả provider hoặc lỗi có mã'),
+  fn('validateRequest', 'validateRequest', 'server/src/controllers/roomPreviewController.js', ['back-preview'], 'Kiểm tra mode, ảnh, placement và kích thước trước khi gọi AI.', 'req.body', 'Input hợp lệ hoặc lỗi 400'),
+  fn('createAnonymousGenerationQuotaService', 'createAnonymousGenerationQuotaService', 'server/src/services/anonymousGenerationQuotaService.js', ['back-quota'], 'Giữ một lượt dùng thử cho khách và hoàn tất hoặc trả lại lượt khi lỗi.', 'IP đã băm + trạng thái request', 'Reservation hoặc yêu cầu đăng nhập'),
+  fn('buildRoomPrompt', 'buildRoomPrompt', 'server/src/services/cloudflareImageService.js', ['back-ai', 'defend-prompt'], 'Ghép brief, product facts, placement và ràng buộc kiến trúc.', 'Scene đã kiểm tra + trạng thái có ảnh reference', 'Prompt ưu tiên đúng sản phẩm/công năng'),
+  fn('getProviderCandidates', 'getProviderCandidates', 'server/src/services/cloudflareImageService.js', ['back-ai'], 'Lập danh sách provider/model đang có cấu hình theo thứ tự ưu tiên.', 'Biến môi trường và thứ tự provider', 'Danh sách ứng viên có key hợp lệ'),
+  fn('generateRoomPreview', 'generateRoomPreview', 'server/src/services/cloudflareImageService.js', ['back-ai', 'back-preview'], 'Gọi từng provider và chỉ fallback với loại lỗi được phép.', 'Ảnh + prompt + guide/reference', 'Ảnh AI, metadata hoặc lỗi cuối cùng'),
+  fn('compositeRoomPreview', 'compositeRoomPreview', 'client/src/utils/roomPreviewCanvas.js', ['journey-result'], 'Ghép vùng AI trở lại ảnh gốc với viền chuyển mềm.', 'Ảnh phòng + ảnh kết quả + vùng sửa', 'Ảnh kết quả cùng kích thước phòng'),
+  fn('normalizeRoomDesign', 'normalizeRoomDesign', 'client/src/context/CollectionContext.jsx', ['front-collections', 'front-storage'], 'Chuẩn hóa RoomDesign từ API/cache về một cấu trúc UI.', 'RoomDesign thô', 'Mẫu có scene, ảnh, scale và metadata ổn định'),
+  fn('cleanDesignInput', 'cleanDesignInput', 'server/src/controllers/roomDesignController.js', ['back-designs', 'data-models'], 'Chỉ nhận các field hợp lệ và giới hạn kích thước dữ liệu trước khi lưu.', 'Body tạo/cập nhật mẫu', 'Payload sạch cho MongoDB'),
+  fn('publicDesign', 'publicDesign', 'server/src/controllers/roomDesignController.js', ['journey-public', 'back-designs'], 'Tạo response public có tác giả, lượt tim và lineage nhưng không lộ dữ liệu riêng.', 'RoomDesign + viewerId', 'DTO an toàn cho gallery'),
+  fn('toggleLike', 'toggleLike', 'server/src/controllers/roomDesignController.js', ['journey-public', 'back-designs'], 'Thêm hoặc bỏ user trong likedBy bằng cập nhật nguyên tử.', 'Design id + user đã đăng nhập', 'Mẫu public với likeCount mới'),
+  fn('reuse', 'reuse', 'server/src/controllers/roomDesignController.js', ['journey-public', 'back-designs'], 'Sao chép mẫu public thành bản private thuộc người dùng hiện tại.', 'Public design id + user', 'RoomDesign mới có liên kết nguồn'),
+  fn('importShopee', 'importShopee', 'server/src/controllers/productController.js', ['back-admin', 'data-import'], 'Lấy metadata từ URL, chống trùng và tạo product chuẩn hóa.', 'URL Shopee từ Admin', 'Product mới/cũ hoặc trạng thái cần bổ sung'),
+  fn('persistAdminProductImage', 'persistAdminProductImage', 'server/src/services/productCatalogService.js', ['back-admin', 'data-import'], 'Kiểm tra ảnh rồi lưu theo môi trường local hoặc production.', 'Product + data URL ảnh', 'Đường dẫn local hoặc data URL bền trong MongoDB'),
 ];
