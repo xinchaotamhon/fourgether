@@ -6,6 +6,7 @@ const test = require('node:test');
 const fourgetherRoot = __dirname;
 const furneehomeRoot = [
   process.env.FURNEEHOME_ROOT && path.resolve(process.env.FURNEEHOME_ROOT),
+  path.resolve(fourgetherRoot, '..', '..', 'furneehome - Copy'),
   path.resolve(fourgetherRoot, '..'),
 ].filter(Boolean).find((root) => (
   fs.existsSync(path.join(root, 'START_HERE.md'))
