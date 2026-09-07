@@ -4,10 +4,13 @@ Fourgether là trang tĩnh giúp cả nhóm nhìn dự án theo cùng một trì
 
 `Đầu vào → Xử lý → Đầu ra`
 
+Curriculum hiện bao phủ toàn bộ bản demo cuối: Trang chủ, tìm kiếm/lọc sản phẩm, Room Studio (tự đặt món và Gợi ý AI), Collection, đăng ký/đăng nhập, quên và đặt lại mật khẩu bằng OTP email, cập nhật hồ sơ, gửi feedback/báo cáo nội dung xấu, CRUD sản phẩm, quản trị user và feedback, cùng ba role customer/admin/superadmin. Phần backend được nói theo chuỗi `route → controller → model/MongoDB → response`, còn tạo ảnh có API và provider fallback.
+
 ## Cách sử dụng
 
-- Mở **Toàn dự án** rồi chọn **Diễn tập từ bước 1**. Luồng chung bàn giao theo thứ tự Dũng → Triều → Phúc → Hiệp.
-- Chọn **Dũng, Triều, Phúc hoặc Hiệp** để học đúng luồng thuyết trình của từng người. Độ khó được chia từ cao xuống thấp: Hiệp → Phúc → Triều → Dũng; thứ tự thuyết trình là Dũng → Triều → Phúc → Hiệp.
+- Mở **Toàn dự án** rồi chọn **Diễn tập từ bước 1**. Luồng chung bàn giao theo thứ tự Dũng → Triều → Phúc → Hiệp, đi trọn Input → Process → Output.
+- Chọn **Dũng, Triều, Phúc hoặc Hiệp** để học một track hoàn chỉnh từ đầu đến cuối. Độ khó được chia từ cao xuống thấp: Hiệp → Phúc → Triều → Dũng; thứ tự thuyết trình là Dũng → Triều → Phúc → Hiệp.
+- Mỗi track có ba lớp lặp lại: ý chính cần nói, thao tác demo nhìn thấy và Q&A nghiệp vụ (kèm vị trí hàm/source). Dùng track Dũng để mở bài, Triều cho UI, Phúc cho quyền/dữ liệu, Hiệp cho AI và giới hạn.
 - Bấm một bước để xem tối đa ba ý chính cần tự diễn đạt, thao tác demo, kết quả phải chỉ ra và phương án khi demo lỗi.
 - Phần **Hàm quan trọng** nói rõ nhiệm vụ, đầu vào → đầu ra và vị trí source; câu phản biện có đáp án ngắn ngay tại đúng bước phát sinh.
 - Chọn **Học bước này**, **Luyện câu hỏi** hoặc học toàn bộ luồng.
