@@ -1,41 +1,34 @@
 # Fourgether
 
-Trang học và luyện bảo vệ cho nhóm FurneeHome.
+Fourgether là trang học và luyện bảo vệ cho nhóm FurneeHome. Phần chính là một luồng thuyết trình gồm 12 chặng, chia liên tiếp cho 4 thành viên.
 
-## Cách học
+## Trình tự thuyết trình
 
-1. Mở tab **Toàn dự án** và nhìn toàn bộ 12 chặng.
-2. Bấm từng chặng, đọc **Bạn cần hiểu** rồi tự kể lại theo trình tự.
-3. Làm đúng các bước trong **Demo trực tiếp**.
-4. Mở **Hàm quan trọng** để biết code làm gì và nằm ở đâu.
-5. Tự trả lời câu giám khảo trước khi mở đáp án.
-6. Sau khi hiểu luồng chung, mỗi thành viên học tab tên mình.
-
-Phòng thử được học theo đúng ba bước của bản mới: tích từ một đến ba sản phẩm rồi quay lại Phòng thử, tải ảnh phòng, nhập vị trí riêng cho từng món và bấm Tạo ảnh để so sánh với ảnh gốc. Hành trình mua hàng vẫn là Sản phẩm → Giỏ hàng → Checkout tạo đơn COD. Khu quản trị tách rõ Sản phẩm, Khách hàng, Đơn hàng và Liên hệ; superadmin có thêm quyền quản trị admin cấp dưới.
-
-Flashcard chỉ dùng để tự kiểm tra sau bài học. Trang không lưu cache, `localStorage`, `sessionStorage` hoặc tiến độ; tải lại là một phiên học mới.
-
-## Phân công
-
-- Dũng: bài toán, hành trình và catalog.
-- Triều: chi tiết sản phẩm, giỏ hàng và sau mua.
-- Phúc: tài khoản, đơn hàng và quản trị.
-- Hiệp: kiến trúc, Phòng thử AI, kiểm thử và triển khai.
+1. Dũng: bài toán → bức tranh hệ thống → tìm sản phẩm.
+2. Triều: chi tiết sản phẩm → giỏ hàng → sau mua và liên hệ.
+3. Phúc: tài khoản và OTP → checkout và đơn hàng → quản trị.
+4. Hiệp: kiến trúc và MongoDB → Phòng thử AI → kiểm thử và deploy.
 
 Độ khó từ cao xuống thấp: Hiệp → Phúc → Triều → Dũng.
 
-## Chạy và kiểm tra
+## Cách học
 
-Mở `index.html` hoặc chạy một static server bất kỳ. Trước khi deploy:
+1. Mở tab **Toàn dự án** để nhìn thứ tự nói và phần bàn giao giữa 4 người.
+2. Bấm một chặng để xem các ý chính và trình tự cần tự diễn đạt.
+3. Tập đúng phần **Demo trực tiếp**.
+4. Mở **Hàm quan trọng** để biết hàm làm gì và nằm ở đâu.
+5. Học **Flashcard hiểu bài** để hiểu sâu chặng đó.
+6. Học **Flashcard giám khảo** để luyện câu hỏi phản biện ngay trong cùng chặng.
+7. Mỗi thành viên mở tab tên mình để tập riêng ba chặng được giao.
 
-```powershell
-node --test smoke.cjs
-```
+Nút **Chế độ cầm tay** chỉ hiện ba ý chính, trình tự và nút chuyển chặng lớn để thành viên có thể liếc nhanh khi thuyết trình bằng điện thoại.
 
-Cloudflare Pages:
+Trang không lưu tiến độ, cache, `localStorage` hoặc `sessionStorage`. Tải lại trang sẽ bắt đầu một phiên học mới.
+
+## Chạy và deploy
+
+Mở `index.html` hoặc chạy bằng static server. Với Cloudflare Pages:
 
 - Framework preset: `None`
 - Build command: để trống
 - Output directory: `.`
-
-Sau khi FurneeHome đổi route, hàm hoặc business rule, cập nhật `data/flashcards.js` và chạy lại smoke test.

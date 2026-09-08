@@ -3,8 +3,8 @@ import {
   ALL_QUESTIONS,
   LESSONS,
   MEMBERS,
+  PRESENTATION_FLOW,
   PROJECT,
-  SEQUENCE_FLOWS,
   TRACKS,
 } from './data/flashcards.js';
 
@@ -15,6 +15,7 @@ const state = {
   deck: [],
   deckTitle: '',
   cardIndex: 0,
+  presentationIndex: 0,
   revealed: false,
 };
 
@@ -75,28 +76,21 @@ function renderJourney(lessons) {
   `;
 }
 
-function renderSequenceFlows() {
-  return `<div class="sequence-flow-list">
-    ${SEQUENCE_FLOWS.map((flow) => `
-      <section class="sequence-flow" aria-labelledby="flow-${escapeHtml(flow.id)}">
-        <header class="sequence-flow-header">
-          <div><p class="eyebrow">LUỒNG THỰC TẾ</p><h3 id="flow-${escapeHtml(flow.id)}">${escapeHtml(flow.title)}</h3></div>
-          <p>${escapeHtml(flow.summary)}</p>
+function renderPresentationFlow() {
+  return `<ol class="presentation-flow">
+    ${PRESENTATION_FLOW.map((part, index) => `
+      <li class="presentation-part">
+        <header>
+          <span>PHẦN ${part.order} · ${escapeHtml(part.difficulty)}</span>
+          <h3>${escapeHtml(part.name)}</h3>
+          <p>${escapeHtml(part.mission)}</p>
         </header>
-        <ol class="sequence-flow-nodes">
-          ${flow.nodes.map((node, index) => `
-            <li class="sequence-flow-item">
-              <button class="sequence-node ${node.lessonId === state.lessonId ? 'is-active' : ''}" data-action="lesson" data-id="${escapeHtml(node.lessonId)}" type="button">
-                <span class="sequence-node-number">${escapeHtml(node.number)}</span>
-                <span><b>${escapeHtml(node.label)}</b><small>${escapeHtml(node.route)}</small></span>
-              </button>
-              ${index < flow.nodes.length - 1 ? '<span class="sequence-arrow" aria-hidden="true">→</span>' : ''}
-            </li>
-          `).join('')}
-        </ol>
-      </section>
+        ${renderJourney(part.lessonIds.map(lessonById).filter(Boolean))}
+        <p class="presentation-handoff"><b>Bàn giao:</b> ${escapeHtml(part.handoff)}</p>
+      </li>
+      ${index < PRESENTATION_FLOW.length - 1 ? '<li class="presentation-connector" aria-hidden="true">↓</li>' : ''}
     `).join('')}
-  </div>`;
+  </ol>`;
 }
 
 function renderTeam() {
@@ -107,7 +101,7 @@ function renderTeam() {
         <h2>Mỗi người có phần chính, cả nhóm vẫn học luồng chung</h2>
       </div>
       <div class="team-grid">
-        ${[...MEMBERS].sort((left, right) => right.difficulty - left.difficulty).map((member) => `
+        ${[...MEMBERS].sort((left, right) => left.difficulty - right.difficulty).map((member) => `
           <article class="member-card">
             <span>${escapeHtml(member.label)}</span>
             <h3>${escapeHtml(member.name)}</h3>
@@ -126,7 +120,7 @@ function renderLesson(lesson, lessons) {
   const index = lessons.findIndex((item) => item.id === lesson.id);
   const previous = lessons[index - 1];
   const next = lessons[index + 1];
-  const handoff = memberByName(lesson.owner)?.handoff || 'Chuyển sang bước kế tiếp trong hành trình.';
+  const handoff = next ? `Tiếp tục với “${next.title}”.` : memberByName(lesson.owner)?.handoff;
 
   return `
     <article class="lesson-detail" id="lesson-detail">
@@ -156,7 +150,7 @@ function renderLesson(lesson, lessons) {
 
       <div class="lesson-grid">
         <section class="lesson-panel demo">
-          <h3>Demo trực tiếp</h3>
+          <h3>Cách dùng và demo trên web</h3>
           ${renderList(lesson.demo.actions, true)}
           <p><b>Kết quả phải thấy:</b> ${escapeHtml(lesson.demo.expected)}</p>
           <details>
@@ -171,7 +165,7 @@ function renderLesson(lesson, lessons) {
       </div>
 
       <section class="lesson-panel">
-        <h3>Hàm quan trọng và công việc thật</h3>
+        <h3>Code cần trình bày</h3>
         <div class="code-grid">
           ${lesson.functions.map((item) => `
             <article class="code-card">
@@ -196,14 +190,20 @@ function renderLesson(lesson, lessons) {
         </div>
       </section>
 
-      <div class="lesson-actions">
-        <button class="secondary" data-action="cards-lesson" type="button">
-          Tự kiểm tra · ${lesson.cards.length} thẻ
-        </button>
-        <button class="secondary" data-action="jury-lesson" type="button">
-          Luyện phản biện · ${lesson.questions.length} câu
-        </button>
-      </div>
+      <section class="study-options" aria-label="Flashcard của chặng">
+        <article>
+          <span>HỌC SÂU</span>
+          <h3>Flashcard hiểu bài</h3>
+          <p>Tự nói lại khái niệm, quy tắc và hàm quan trọng của chặng này.</p>
+          <button class="secondary" data-action="cards-lesson" type="button">Học ${lesson.cards.length} thẻ</button>
+        </article>
+        <article>
+          <span>PHẢN BIỆN</span>
+          <h3>Flashcard giám khảo</h3>
+          <p>Tự trả lời tình huống “vì sao”, “ở đâu” và “nếu lỗi thì sao”.</p>
+          <button class="secondary" data-action="jury-lesson" type="button">Luyện ${lesson.questions.length} câu</button>
+        </article>
+      </section>
 
       <footer class="lesson-navigation">
         <button data-action="lesson" data-id="${previous?.id || ''}" type="button" ${previous ? '' : 'disabled'}>
@@ -233,6 +233,7 @@ function renderMap() {
         <p>${escapeHtml(track.description)}</p>
       </div>
       <div class="hero-actions">
+        <button class="secondary" data-action="present" type="button">Chế độ cầm tay</button>
         <button class="secondary" data-action="all-jury" type="button">Luyện câu hỏi</button>
         <button class="primary" data-action="start" type="button">Học từ bài đầu</button>
       </div>
@@ -248,11 +249,11 @@ function renderMap() {
 
     <section class="map-section">
       <div class="section-title">
-        <p>BỨC TRANH TOÀN DỰ ÁN</p>
-        <h2>Bấm từng chặng để học đầy đủ</h2>
-        <span>Mỗi node là một bước có thể bấm để mở ý chính, hàm/route quan trọng và câu hỏi phản biện.</span>
+        <p>${state.trackId === 'common' ? 'LUỒNG THUYẾT TRÌNH CHÍNH' : 'LỘ TRÌNH CỦA THÀNH VIÊN'}</p>
+        <h2>${state.trackId === 'common' ? 'Dũng → Triều → Phúc → Hiệp' : 'Bấm từng chặng để học và tập nói'}</h2>
+        <span>Mỗi chặng mở ra ý chính để nói, demo, hàm quan trọng, flashcard học sâu và câu hỏi phản biện.</span>
       </div>
-      ${state.trackId === 'common' ? renderSequenceFlows() : renderJourney(lessons)}
+      ${state.trackId === 'common' ? renderPresentationFlow() : renderJourney(lessons)}
     </section>
 
     ${lesson ? renderLesson(lesson, lessons) : `
@@ -263,6 +264,50 @@ function renderMap() {
     `}
 
     ${state.trackId === 'common' ? renderTeam() : ''}
+  `;
+}
+
+function renderPresenter() {
+  const lessons = lessonsInTrack();
+  const lesson = lessons[state.presentationIndex] || lessons[0];
+  state.view = 'presenter';
+  app.innerHTML = `
+    <section class="presenter">
+      <header class="presenter-header">
+        <button data-action="back" type="button">← Lộ trình</button>
+        <b>${state.presentationIndex + 1}/${lessons.length}</b>
+      </header>
+      <p class="eyebrow">${escapeHtml(lesson.owner)} · CHẶNG ${escapeHtml(lesson.number)}</p>
+      <h1>${escapeHtml(lesson.title)}</h1>
+      <p class="presenter-route">Mở: <code>${escapeHtml(lesson.route)}</code></p>
+      <section>
+        <h2>Ba ý cần nói</h2>
+        ${renderList(lesson.keyPoints.slice(0, 3), true)}
+      </section>
+      <section>
+        <h2>Trình tự</h2>
+        <p class="presenter-sequence">${lesson.sequence.map(escapeHtml).join(' → ')}</p>
+      </section>
+      <details class="presenter-extra">
+        <summary>Cách dùng trên web</summary>
+        ${renderList(lesson.demo.actions.slice(0, 3), true)}
+      </details>
+      <details class="presenter-extra">
+        <summary>Code cần nhớ</summary>
+        ${renderList(lesson.functions.slice(0, 2).map((item) => `${item.name}() — ${item.path}`))}
+      </details>
+      <details class="presenter-extra">
+        <summary>Câu giám khảo dễ hỏi</summary>
+        <p><b>${escapeHtml(lesson.questions[0].question)}</b></p>
+        <p>${escapeHtml(lesson.questions[0].answer)}</p>
+      </details>
+      <p class="presenter-handoff"><b>Chuyển ý:</b> ${escapeHtml(state.presentationIndex < lessons.length - 1 ? `Tiếp theo là ${lessons[state.presentationIndex + 1].title}.` : memberByName(lesson.owner)?.handoff)}</p>
+      <nav class="presenter-actions">
+        <button data-action="previous-present" type="button" ${state.presentationIndex ? '' : 'disabled'}>← Trước</button>
+        <button data-action="open-present-lesson" data-id="${escapeHtml(lesson.id)}" type="button">Xem chi tiết</button>
+        <button data-action="next-present" type="button">${state.presentationIndex === lessons.length - 1 ? 'Kết thúc' : 'Tiếp →'}</button>
+      </nav>
+    </section>
   `;
 }
 
@@ -328,6 +373,26 @@ app.addEventListener('click', (event) => {
   if (action === 'start') {
     state.lessonId = lessonsInTrack()[0]?.id || null;
     renderMap();
+  }
+  if (action === 'present') {
+    state.presentationIndex = 0;
+    renderPresenter();
+  }
+  if (action === 'previous-present' && state.presentationIndex > 0) {
+    state.presentationIndex -= 1;
+    renderPresenter();
+  }
+  if (action === 'next-present') {
+    if (state.presentationIndex === lessonsInTrack().length - 1) renderMap();
+    else {
+      state.presentationIndex += 1;
+      renderPresenter();
+    }
+  }
+  if (action === 'open-present-lesson') {
+    state.lessonId = button.dataset.id;
+    renderMap();
+    document.getElementById('lesson-detail')?.scrollIntoView({ block: 'start' });
   }
   if (action === 'cards-lesson') {
     openDeck(
