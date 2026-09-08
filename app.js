@@ -1,616 +1,383 @@
 import {
-  COURSES,
-  DEFENSE_QUESTIONS,
-  FLASHCARDS,
-  FLOW_NODES,
-  IMPORTANT_FUNCTIONS,
-  LEARNING_FLOWS,
-  MEMBER_PATHS,
-  PRESENTATION_DEMOS,
+  ALL_FLASHCARDS,
+  ALL_QUESTIONS,
+  LESSONS,
+  MEMBERS,
+  PROJECT,
+  SEQUENCE_FLOWS,
+  TRACKS,
 } from './data/flashcards.js';
 
-// Progress lives only in memory. Reloading starts a new learning session.
 const state = {
-  view: 'flow',
-  flowId: 'common',
-  milestoneId: null,
-  deckCardIds: [],
+  view: 'map',
+  trackId: 'common',
+  lessonId: null,
+  deck: [],
   deckTitle: '',
-  index: 0,
+  cardIndex: 0,
   revealed: false,
-  details: new Set(),
-  mastered: new Set(),
 };
 
 const app = document.getElementById('app');
-const nodesById = new Map(FLOW_NODES.map((node) => [node.id, node]));
-const cardsById = new Map(FLASHCARDS.map((card) => [card.id, card]));
-const supplementalQuestionIds = new Set(DEFENSE_QUESTIONS.map((card) => card.id));
-
-const flowById = (flowId) => LEARNING_FLOWS.find((flow) => flow.id === flowId);
-const courseById = (courseId) => COURSES.find((course) => course.id === courseId);
-const memberById = (memberId) => MEMBER_PATHS.find((member) => member.id === memberId);
-const cardsFromIds = (cardIds = []) => cardIds.map((id) => cardsById.get(id)).filter(Boolean);
-const milestonesOf = (flow) => flow.phases.flatMap((phase) => phase.milestones);
-const milestoneById = (flow, milestoneId) => milestonesOf(flow).find((item) => item.id === milestoneId);
+const lessonById = (id) => LESSONS.find((item) => item.id === id);
+const trackById = (id) => TRACKS.find((item) => item.id === id) || TRACKS[0];
+const memberByName = (name) => MEMBERS.find((item) => item.name === name);
 const escapeHtml = (value) => String(value ?? '').replace(
   /[&<>'"]/g,
   (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character],
 );
 
-const intersects = (left = [], right = []) => left.some((item) => right.includes(item));
-const presenterFor = (flow, milestone) => milestone.presenter || flow.owner;
-
-function coreCardsForMilestone(flow, milestone) {
-  return cardsFromIds(cardIdsForMilestone(flow, milestone))
-    .filter((card) => !supplementalQuestionIds.has(card.id));
+function renderList(items, ordered = false) {
+  const tag = ordered ? 'ol' : 'ul';
+  return `<${tag}>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</${tag}>`;
 }
 
-function talkingPointsForMilestone(flow, milestone) {
-  const points = [
-    milestone.summary,
-    ...coreCardsForMilestone(flow, milestone).map((card) => card.modelAnswer),
-  ];
-  return [...new Set(points.filter(Boolean))].slice(0, 3);
+function lessonsInTrack() {
+  return trackById(state.trackId).lessonIds.map(lessonById).filter(Boolean);
 }
 
-function demosForMilestone(milestone) {
-  return PRESENTATION_DEMOS
-    .filter((demo) => intersects(milestone.nodeIds, demo.nodeIds))
-    .slice(0, 3);
-}
-
-function functionsForMilestone(milestone) {
-  return IMPORTANT_FUNCTIONS
-    .filter((item) => intersects(milestone.nodeIds, item.nodeIds))
-    .slice(0, 3);
-}
-
-function cardIdsForMilestone(flow, milestone) {
-  const nodeIds = new Set(milestone.nodeIds);
-  const course = courseById(flow.courseId);
-  return course.cardIds.filter((cardId) => nodeIds.has(cardsById.get(cardId)?.nodeId));
-}
-
-function questionIdsForMilestone(flow, milestone) {
-  const nodeIds = new Set(milestone.nodeIds);
-  const presenter = presenterFor(flow, milestone);
-  const priority = (cardId) => {
-    const meta = questionMeta(cardId);
-    if (!meta) return 4;
-    return (meta.member.name === presenter ? 0 : 2) + (meta.likelihood === 'Khả năng cao' ? 0 : 1);
-  };
-  return flow.questionIds
-    .filter((cardId) => nodeIds.has(cardsById.get(cardId)?.nodeId))
-    .sort((left, right) => priority(left) - priority(right));
-}
-
-function questionMeta(cardId) {
-  for (const member of MEMBER_PATHS) {
-    if (member.questions.high.includes(cardId)) return { member, likelihood: 'Khả năng cao' };
-    if (member.questions.medium.includes(cardId)) return { member, likelihood: 'Có thể hỏi' };
-  }
-  return null;
-}
-
-function validateCurriculum() {
-  const errors = [];
-  const nodeIds = new Set(FLOW_NODES.map((node) => node.id));
-  const cardIds = new Set(FLASHCARDS.map((card) => card.id));
-
-  for (const flow of LEARNING_FLOWS) {
-    const course = courseById(flow.courseId);
-    if (!course) errors.push(`Flow ${flow.id} thiếu course`);
-    if (flow.phases.map((phase) => phase.id).join(',') !== 'input,process,output') {
-      errors.push(`Flow ${flow.id} sai thứ tự phase`);
-    }
-
-    const seenNodes = new Set();
-    for (const milestone of milestonesOf(flow)) {
-      for (const nodeId of milestone.nodeIds) {
-        if (!nodeIds.has(nodeId)) errors.push(`${milestone.id} thiếu node ${nodeId}`);
-        if (seenNodes.has(nodeId)) errors.push(`${flow.id} lặp node ${nodeId}`);
-        seenNodes.add(nodeId);
-      }
-    }
-
-    for (const questionId of flow.questionIds) {
-      if (!cardIds.has(questionId)) errors.push(`${flow.id} thiếu câu ${questionId}`);
-      const mapped = milestonesOf(flow).filter((milestone) => (
-        milestone.nodeIds.includes(cardsById.get(questionId)?.nodeId)
-      ));
-      if (mapped.length !== 1) errors.push(`${flow.id} chưa đặt ${questionId} vào đúng một bước`);
-    }
-
-    if (course) {
-      for (const cardId of course.cardIds) {
-        const mapped = milestonesOf(flow).some((milestone) => (
-          milestone.nodeIds.includes(cardsById.get(cardId)?.nodeId)
-        ));
-        if (!mapped) errors.push(`${flow.id} chưa đặt thẻ ${cardId} vào luồng`);
-      }
-    }
-  }
-
-  if (errors.length) console.error('[Fourgether] Dữ liệu học không hợp lệ:', errors);
-  return errors;
-}
-
-function renderFlowTabs() {
+function renderTabs() {
   return `
-    <nav class="flow-tabs" role="tablist" aria-label="Chọn luồng học">
-      ${LEARNING_FLOWS.map((flow) => `
+    <nav class="track-tabs" aria-label="Chọn lộ trình">
+      ${TRACKS.map((track) => `
         <button
-          id="flow-tab-${escapeHtml(flow.id)}"
-          class="flow-tab ${flow.id === state.flowId ? 'is-active' : ''}"
-          data-action="flow"
-          data-flow-id="${escapeHtml(flow.id)}"
+          class="track-tab ${track.id === state.trackId ? 'is-active' : ''}"
+          data-action="track"
+          data-id="${escapeHtml(track.id)}"
           type="button"
-          role="tab"
-          aria-selected="${flow.id === state.flowId}"
-          aria-controls="flow-overview"
-        >${escapeHtml(flow.tab)}</button>
+        >${escapeHtml(track.tab)}</button>
       `).join('')}
     </nav>
   `;
 }
 
-function renderMilestone(flow, milestone) {
-  const questionIds = questionIdsForMilestone(flow, milestone);
-  const functionCount = functionsForMilestone(milestone).length;
-  const active = milestone.id === state.milestoneId;
-
+function renderJourney(lessons) {
   return `
-    <li>
-      <button
-        class="milestone ${active ? 'is-active' : ''}"
-        data-action="milestone"
-        data-milestone-id="${escapeHtml(milestone.id)}"
-        type="button"
-        aria-expanded="${active}"
-        aria-controls="milestone-detail"
-      >
-        <span class="milestone-title">${escapeHtml(milestone.title)}</span>
-        <span class="milestone-summary">${escapeHtml(milestone.summary)}</span>
-        <span class="milestone-meta">
-          <span>${escapeHtml(presenterFor(flow, milestone))}${functionCount ? ` · ${functionCount} hàm chính` : ''}</span>
-          <span class="question-count">? ${questionIds.length} câu</span>
-        </span>
-      </button>
-    </li>
+    <ol class="journey-map">
+      ${lessons.map((lesson, index) => `
+        <li class="journey-item">
+          <button
+            class="journey-button ${lesson.id === state.lessonId ? 'is-active' : ''}"
+            data-action="lesson"
+            data-id="${escapeHtml(lesson.id)}"
+            type="button"
+          >
+            <span class="journey-number">${escapeHtml(lesson.number)}</span>
+            <span>
+              <b>${escapeHtml(lesson.title)}</b>
+              <small>${escapeHtml(lesson.owner)} · ${escapeHtml(lesson.route)}</small>
+            </span>
+          </button>
+          ${index < lessons.length - 1 ? '<span class="journey-arrow" aria-hidden="true">→</span>' : ''}
+        </li>
+      `).join('')}
+    </ol>
   `;
 }
 
-function renderPhase(flow, phase, index) {
+function renderSequenceFlows() {
+  return `<div class="sequence-flow-list">
+    ${SEQUENCE_FLOWS.map((flow) => `
+      <section class="sequence-flow" aria-labelledby="flow-${escapeHtml(flow.id)}">
+        <header class="sequence-flow-header">
+          <div><p class="eyebrow">LUỒNG THỰC TẾ</p><h3 id="flow-${escapeHtml(flow.id)}">${escapeHtml(flow.title)}</h3></div>
+          <p>${escapeHtml(flow.summary)}</p>
+        </header>
+        <ol class="sequence-flow-nodes">
+          ${flow.nodes.map((node, index) => `
+            <li class="sequence-flow-item">
+              <button class="sequence-node ${node.lessonId === state.lessonId ? 'is-active' : ''}" data-action="lesson" data-id="${escapeHtml(node.lessonId)}" type="button">
+                <span class="sequence-node-number">${escapeHtml(node.number)}</span>
+                <span><b>${escapeHtml(node.label)}</b><small>${escapeHtml(node.route)}</small></span>
+              </button>
+              ${index < flow.nodes.length - 1 ? '<span class="sequence-arrow" aria-hidden="true">→</span>' : ''}
+            </li>
+          `).join('')}
+        </ol>
+      </section>
+    `).join('')}
+  </div>`;
+}
+
+function renderTeam() {
   return `
-    <article class="phase-card phase-${escapeHtml(phase.id)}">
-      <header class="phase-header">
-        <span class="phase-number">0${index + 1}</span>
+    <section class="team-section">
+      <div class="section-title">
+        <p>PHÂN CÔNG HỌC VÀ TRÌNH BÀY</p>
+        <h2>Mỗi người có phần chính, cả nhóm vẫn học luồng chung</h2>
+      </div>
+      <div class="team-grid">
+        ${[...MEMBERS].sort((left, right) => right.difficulty - left.difficulty).map((member) => `
+          <article class="member-card">
+            <span>${escapeHtml(member.label)}</span>
+            <h3>${escapeHtml(member.name)}</h3>
+            <p>${escapeHtml(member.mission)}</p>
+            <button data-action="track" data-id="${escapeHtml(member.id)}" type="button">
+              Mở lộ trình ${escapeHtml(member.name)}
+            </button>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderLesson(lesson, lessons) {
+  const index = lessons.findIndex((item) => item.id === lesson.id);
+  const previous = lessons[index - 1];
+  const next = lessons[index + 1];
+  const handoff = memberByName(lesson.owner)?.handoff || 'Chuyển sang bước kế tiếp trong hành trình.';
+
+  return `
+    <article class="lesson-detail" id="lesson-detail">
+      <header class="lesson-header">
         <div>
-          <span class="phase-label">${escapeHtml(phase.title)}</span>
-          <p>${escapeHtml(phase.summary)}</p>
+          <p class="eyebrow">BÀI ${escapeHtml(lesson.number)} · ${escapeHtml(lesson.owner)} PHỤ TRÁCH</p>
+          <h2>${escapeHtml(lesson.title)}</h2>
+          <p>${escapeHtml(lesson.summary)}</p>
         </div>
+        <button class="icon-button" data-action="close" type="button" aria-label="Đóng">×</button>
       </header>
-      <ol class="milestone-list">
-        ${phase.milestones.map((milestone) => renderMilestone(flow, milestone)).join('')}
-      </ol>
+
+      <div class="lesson-grid">
+        <section class="lesson-panel important">
+          <h3>Bạn cần hiểu</h3>
+          ${renderList(lesson.keyPoints)}
+        </section>
+        <section class="lesson-panel">
+          <h3>Kể lại theo trình tự</h3>
+          <div class="mini-flow">
+            ${lesson.sequence.map((step, stepIndex) => `
+              <span><i>${stepIndex + 1}</i>${escapeHtml(step)}</span>
+            `).join('')}
+          </div>
+        </section>
+      </div>
+
+      <div class="lesson-grid">
+        <section class="lesson-panel demo">
+          <h3>Demo trực tiếp</h3>
+          ${renderList(lesson.demo.actions, true)}
+          <p><b>Kết quả phải thấy:</b> ${escapeHtml(lesson.demo.expected)}</p>
+          <details>
+            <summary>Nếu demo lỗi</summary>
+            <p>${escapeHtml(lesson.demo.fallback)}</p>
+          </details>
+        </section>
+        <section class="lesson-panel rules">
+          <h3>Quy tắc nghiệp vụ</h3>
+          ${renderList(lesson.rules)}
+        </section>
+      </div>
+
+      <section class="lesson-panel">
+        <h3>Hàm quan trọng và công việc thật</h3>
+        <div class="code-grid">
+          ${lesson.functions.map((item) => `
+            <article class="code-card">
+              <code>${escapeHtml(item.name)}()</code>
+              <p>${escapeHtml(item.purpose)}</p>
+              <small>${escapeHtml(item.path)} · ${escapeHtml(item.symbol)}</small>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+
+      <section class="lesson-panel">
+        <h3>Giám khảo có thể hỏi ngay tại đây</h3>
+        <div class="question-list">
+          ${lesson.questions.map((item) => `
+            <details>
+              <summary>${escapeHtml(item.question)}</summary>
+              <p>${escapeHtml(item.answer)}</p>
+              <small>${escapeHtml(item.owner)} trả lời chính</small>
+            </details>
+          `).join('')}
+        </div>
+      </section>
+
+      <div class="lesson-actions">
+        <button class="secondary" data-action="cards-lesson" type="button">
+          Tự kiểm tra · ${lesson.cards.length} thẻ
+        </button>
+        <button class="secondary" data-action="jury-lesson" type="button">
+          Luyện phản biện · ${lesson.questions.length} câu
+        </button>
+      </div>
+
+      <footer class="lesson-navigation">
+        <button data-action="lesson" data-id="${previous?.id || ''}" type="button" ${previous ? '' : 'disabled'}>
+          ← Bài trước
+        </button>
+        <p><b>Bàn giao:</b> ${escapeHtml(handoff)}</p>
+        <button data-action="lesson" data-id="${next?.id || ''}" type="button" ${next ? '' : 'disabled'}>
+          Bài tiếp →
+        </button>
+      </footer>
     </article>
   `;
 }
 
-function renderMilestoneDetail(flow) {
-  const milestone = milestoneById(flow, state.milestoneId);
-  if (!milestone) return '';
-
-  const milestones = milestonesOf(flow);
-  const stepIndex = milestones.findIndex((item) => item.id === milestone.id);
-  const previous = milestones[stepIndex - 1];
-  const next = milestones[stepIndex + 1];
-  const phase = flow.phases.find((item) => item.milestones.some((candidate) => candidate.id === milestone.id));
-  const cardIds = cardIdsForMilestone(flow, milestone);
-  const questionIds = questionIdsForMilestone(flow, milestone);
-  const questionCards = cardsFromIds(questionIds);
-  const talkingPoints = talkingPointsForMilestone(flow, milestone);
-  const demoSteps = demosForMilestone(milestone);
-  const importantFunctions = functionsForMilestone(milestone);
-  const nodeNames = milestone.nodeIds.map((nodeId) => nodesById.get(nodeId)?.label).filter(Boolean);
-  const transition = next
-    ? `${presenterFor(flow, next)} tiếp: ${next.title.replace(/^.*? · /, '')}`
-    : memberById(flow.memberId)?.handoff || 'Chốt bằng kết quả, giới hạn và bằng chứng đã demo.';
-
-  return `
-    <section id="milestone-detail" class="milestone-detail" tabindex="-1" aria-labelledby="milestone-detail-title">
-      <header>
-        <div>
-          <span class="eyebrow">BƯỚC ${stepIndex + 1}/${milestones.length} · ${escapeHtml(phase.title)}</span>
-          <h2 id="milestone-detail-title">${escapeHtml(milestone.title)}</h2>
-          <span class="presenter-chip">${escapeHtml(presenterFor(flow, milestone))} trình bày</span>
-        </div>
-        <button class="close-detail" data-action="close-detail" type="button" aria-label="Đóng chi tiết">×</button>
-      </header>
-
-      <div class="presentation-guide">
-        <section class="guide-panel talking-panel">
-          <h3>Ý chính · tự diễn đạt</h3>
-          <ul>
-            ${talkingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join('')}
-          </ul>
-        </section>
-
-        <section class="guide-panel demo-panel">
-          <h3>Demo trực tiếp</h3>
-          <ol class="demo-list">
-            ${demoSteps.map((step) => `
-              <li>
-                <p><b>Làm:</b> ${escapeHtml(step.action)}</p>
-                <p><b>Thấy:</b> ${escapeHtml(step.expected)}</p>
-                <details><summary>Nếu demo lỗi</summary><p>${escapeHtml(step.fallback)}</p></details>
-              </li>
-            `).join('')}
-          </ol>
-        </section>
-      </div>
-
-      ${importantFunctions.length ? `
-        <section class="code-guide">
-          <div class="section-heading">
-            <h3>Hàm quan trọng</h3>
-          </div>
-          <div class="function-grid">
-            ${importantFunctions.map((item) => `
-              <article class="function-card">
-                <code>${escapeHtml(item.name)}()</code>
-                <p>${escapeHtml(item.purpose)}</p>
-                <span class="function-io"><b>Nhận:</b> ${escapeHtml(item.input)} <i>→</i> <b>Trả:</b> ${escapeHtml(item.output)}</span>
-                <small>${escapeHtml(item.path)} · ${escapeHtml(item.symbol)}</small>
-              </article>
-            `).join('')}
-          </div>
-        </section>
-      ` : ''}
-
-      <section class="question-preview">
-        <div class="question-preview-heading">
-          <strong>Giám khảo có thể hỏi ở bước này</strong>
-          <span>${questionIds.length} câu</span>
-        </div>
-        <div class="defense-question-list">
-          ${questionCards.slice(0, 3).map((card) => {
-            const meta = questionMeta(card.id);
-            return `
-              <details class="defense-question">
-                <summary>${escapeHtml(card.prompt)}</summary>
-                <p>${escapeHtml(card.modelAnswer)}</p>
-                ${meta ? `<small>${escapeHtml(meta.likelihood)} · ${escapeHtml(meta.member.name)} trả lời</small>` : ''}
-              </details>
-            `;
-          }).join('')}
-        </div>
-        ${questionIds.length > 3 ? `<span class="more-questions">+ ${questionIds.length - 3} câu khác trong bộ luyện</span>` : ''}
-      </section>
-
-      <details class="node-route">
-        <summary>Phạm vi kiến thức của bước</summary>
-        <p>${nodeNames.map(escapeHtml).join(' → ')}</p>
-      </details>
-
-      <div class="step-navigation">
-        <button class="secondary-action" data-action="previous-step" type="button" ${previous ? '' : 'disabled'}>← Bước trước</button>
-        <p><b>Bàn giao:</b> ${escapeHtml(transition)}</p>
-        <button class="primary-action" data-action="next-step" type="button">${next ? 'Bước tiếp →' : 'Kết thúc luồng'}</button>
-      </div>
-
-      <div class="detail-actions-row">
-        <button class="secondary-action" data-action="study-step" type="button">Học bước này · ${cardIds.length} thẻ</button>
-        <button class="primary-action" data-action="questions-step" type="button">Luyện câu hỏi · ${questionIds.length} câu</button>
-      </div>
-    </section>
-  `;
-}
-
-function renderFlow() {
-  state.view = 'flow';
-  const flow = flowById(state.flowId) || LEARNING_FLOWS[0];
-  const course = courseById(flow.courseId);
-  const member = flow.memberId ? memberById(flow.memberId) : null;
-  const learned = course.cardIds.filter((cardId) => state.mastered.has(cardId)).length;
-  const context = member
-    ? `${member.difficultyLabel} · thuyết trình thứ ${member.presentationOrder}`
-    : 'Luồng nền tảng cho cả 4 thành viên';
+function renderMap() {
+  state.view = 'map';
+  const track = trackById(state.trackId);
+  const lessons = lessonsInTrack();
+  if (state.lessonId && !track.lessonIds.includes(state.lessonId)) state.lessonId = null;
+  const lesson = lessonById(state.lessonId);
 
   app.innerHTML = `
-    <section class="flow-heading">
+    <section class="hero">
       <div>
-        <p class="eyebrow">LUỒNG THUYẾT TRÌNH · DEMO · PHẢN BIỆN</p>
-        <h1>${escapeHtml(flow.title)}</h1>
-        <p class="lead">${escapeHtml(flow.summary)}</p>
+        <p class="eyebrow">HỌC ĐỂ THUYẾT TRÌNH · DEMO · PHẢN BIỆN</p>
+        <h1>${escapeHtml(track.name)}</h1>
+        <p>${escapeHtml(track.description)}</p>
       </div>
-      <div class="session-score">
-        <strong>${learned}/${course.cardIds.length}</strong>
-        <span>thẻ đã thuộc<br>trong luồng này</span>
-      </div>
-    </section>
-
-    ${renderFlowTabs()}
-
-    <section class="flow-launch" aria-label="Bắt đầu học luồng hiện tại">
-      <div>
-        <span class="flow-owner">${escapeHtml(flow.owner)}</span>
-        <strong>${escapeHtml(context)}</strong>
-      </div>
-      <div class="flow-actions">
-        <button class="secondary-action" data-action="all-questions" type="button">Luyện tất cả · ${flow.questionIds.length} câu</button>
-        <button class="secondary-action" data-action="course" type="button">Học thẻ · ${course.cardIds.length}</button>
-        <button class="primary-action" data-action="rehearse" type="button">Diễn tập từ bước 1</button>
+      <div class="hero-actions">
+        <button class="secondary" data-action="all-jury" type="button">Luyện câu hỏi</button>
+        <button class="primary" data-action="start" type="button">Học từ bài đầu</button>
       </div>
     </section>
 
-    <section
-      id="flow-overview"
-      class="flow-overview"
-      role="tabpanel"
-      aria-labelledby="flow-tab-${escapeHtml(flow.id)}"
-      aria-label="${escapeHtml(flow.tab)}: Đầu vào, Xử lý, Đầu ra"
-    >
-      <div class="flow-board">
-        ${renderPhase(flow, flow.phases[0], 0)}
-        <span class="flow-arrow" aria-hidden="true"></span>
-        ${renderPhase(flow, flow.phases[1], 1)}
-        <span class="flow-arrow" aria-hidden="true"></span>
-        ${renderPhase(flow, flow.phases[2], 2)}
-      </div>
-      ${renderMilestoneDetail(flow)}
-    </section>
-  `;
-  bindFlowEvents();
-}
+    ${renderTabs()}
 
-function renderSources(card) {
-  return `
-    <div class="card-sources">
-      <b>Bằng chứng</b>
-      ${card.sourceRefs.map((source) => `
-        <span>${escapeHtml(source.path)} · ${escapeHtml(source.symbol)}</span>
-      `).join('')}
-    </div>
+    <section class="project-summary">
+      <div><span>KHÁCH HÀNG</span><b>${escapeHtml(PROJECT.audience)}</b></div>
+      <div><span>GIÁ TRỊ</span><b>${escapeHtml(PROJECT.promise)}</b></div>
+      <div><span>ĐIỂM WOW</span><b>${escapeHtml(PROJECT.wow)}</b></div>
+    </section>
+
+    <section class="map-section">
+      <div class="section-title">
+        <p>BỨC TRANH TOÀN DỰ ÁN</p>
+        <h2>Bấm từng chặng để học đầy đủ</h2>
+        <span>Mỗi node là một bước có thể bấm để mở ý chính, hàm/route quan trọng và câu hỏi phản biện.</span>
+      </div>
+      ${state.trackId === 'common' ? renderSequenceFlows() : renderJourney(lessons)}
+    </section>
+
+    ${lesson ? renderLesson(lesson, lessons) : `
+      <section class="start-hint">
+        <b>Bắt đầu từ đâu?</b>
+        <p>Chọn một chặng ở sơ đồ, đọc phần cần hiểu, tự kể lại, demo rồi mở câu phản biện.</p>
+      </section>
+    `}
+
+    ${state.trackId === 'common' ? renderTeam() : ''}
   `;
 }
 
-function detailButton(key, label) {
-  const open = state.details.has(key) ? 'is-open' : '';
-  return `<button class="detail-button ${open}" data-action="detail" data-detail="${key}" type="button">${label}</button>`;
-}
-
-function activeCards() {
-  return cardsFromIds(state.deckCardIds);
-}
-
-function renderDeck() {
+function openDeck(items, title) {
+  if (!items.length) return;
   state.view = 'deck';
-  const cards = activeCards();
-  const card = cards[state.index];
-  if (!card) return renderFlow();
-
-  const node = nodesById.get(card.nodeId);
-  const meta = questionMeta(card.id);
-  const mastered = state.mastered.has(card.id);
-  const questionBadge = meta
-    ? `<span class="question-badge">${meta.likelihood} · ${escapeHtml(meta.member.name)} phụ trách</span>`
-    : '';
-
-  const answer = state.revealed ? `
-    <span class="answer-text">${escapeHtml(card.modelAnswer)}</span>
-    <div class="detail-actions">
-      ${detailButton('explanation', 'Vì sao')}
-      ${detailButton('misconception', 'Dễ nhầm')}
-      ${detailButton('transfer', 'Nếu… thì sao?')}
-    </div>
-    ${state.details.has('explanation') ? `
-      <section class="card-detail"><h3>Vì sao</h3><p>${escapeHtml(card.explanation)}</p></section>
-    ` : ''}
-    ${state.details.has('misconception') ? `
-      <section class="card-detail"><h3>Dễ nhầm</h3><p>${escapeHtml(card.misconception)}</p></section>
-    ` : ''}
-    ${state.details.has('transfer') ? `
-      <section class="card-detail">
-        <h3>Câu hỏi tiếp theo</h3><p>${escapeHtml(card.transfer.prompt)}</p>
-        <h3>Trả lời</h3><p>${escapeHtml(card.transfer.answer)}</p>
-      </section>
-    ` : ''}
-    ${renderSources(card)}
-  ` : `<span class="question-text">${escapeHtml(card.prompt)}</span>`;
-
-  const flashcard = state.revealed
-    ? `
-      <section class="flashcard is-flipped">
-        <span class="card-side-label">ĐÁP ÁN</span>
-        <div class="card-content">${answer}</div>
-        <button class="card-foot" data-action="flip" type="button">Bấm để xem lại câu hỏi</button>
-      </section>
-    `
-    : `
-      <button class="flashcard" data-action="flip" type="button" aria-label="Xem đáp án">
-        <span class="card-side-label">CÂU HỎI</span>
-        <div class="card-content">${answer}</div>
-        <span class="card-foot">Bấm thẻ hoặc Space để lật</span>
-      </button>
-    `;
-
-  app.innerHTML = `
-    <div class="deck-topbar">
-      <button class="back-button" data-action="back" type="button">← Sơ đồ ${escapeHtml(flowById(state.flowId)?.tab || '')}</button>
-      <div class="deck-node">
-        <span class="node-number">${escapeHtml(node.order)}</span>
-        <span>
-          <strong>${escapeHtml(state.deckTitle)}</strong>
-          <small>${escapeHtml(node.label)} · ${escapeHtml(card.type)}</small>
-        </span>
-      </div>
-      <span class="deck-count">${state.index + 1} / ${cards.length}</span>
-    </div>
-    <div class="deck-progress"><span style="width:${((state.index + 1) / cards.length) * 100}%"></span></div>
-
-    <section class="study-layout">
-      <div class="study-intro">
-        <span class="eyebrow">${meta ? 'LUYỆN BẢO VỆ' : escapeHtml(card.type).toUpperCase()}</span>
-        ${questionBadge}
-        <h1>${state.revealed ? 'Đối chiếu câu trả lời' : 'Tự trả lời như khi bảo vệ'}</h1>
-        <p>${state.revealed ? 'Mở từng phần nếu cần hiểu sâu hơn.' : 'Nói thành lời trước, sau đó mới lật thẻ.'}</p>
-        <button class="keyboard-hint" data-action="flip" type="button">
-          ${state.revealed ? 'Space · Xem lại câu hỏi' : 'Space · Xem đáp án'}
-        </button>
-      </div>
-      ${flashcard}
-    </section>
-
-    <div class="study-actions">
-      <button class="nav-button" data-action="previous" type="button" ${state.index === 0 ? 'disabled' : ''}>← Câu trước</button>
-      <button class="master-button ${mastered ? 'done' : ''}" data-action="mastered" type="button">
-        ${mastered ? '✓ Đã thuộc câu này' : '☆ Đánh dấu đã thuộc'}
-      </button>
-      <button class="nav-button" data-action="next" type="button">
-        ${state.index === cards.length - 1 ? 'Hoàn thành' : 'Câu tiếp'} →
-      </button>
-    </div>
-  `;
-  bindDeckEvents();
-}
-
-function resetCardFace() {
-  state.revealed = false;
-  state.details.clear();
-}
-
-function openCards(cardIds, title) {
-  if (!cardIds.length) return;
-  state.deckCardIds = [...cardIds];
+  state.deck = items;
   state.deckTitle = title;
-  state.index = 0;
-  resetCardFace();
+  state.cardIndex = 0;
+  state.revealed = false;
   renderDeck();
 }
 
-function openMilestone(milestoneId) {
-  state.milestoneId = milestoneId;
-  renderFlow();
-  app.querySelector('#milestone-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+function renderDeck() {
+  const item = state.deck[state.cardIndex];
+  const lesson = lessonById(item.lessonId);
+  app.innerHTML = `
+    <section class="deck-header">
+      <button data-action="back" type="button">← Quay lại lộ trình</button>
+      <div>
+        <p class="eyebrow">${escapeHtml(state.deckTitle)}</p>
+        <h1>${escapeHtml(lesson.title)}</h1>
+      </div>
+      <b>${state.cardIndex + 1}/${state.deck.length}</b>
+    </section>
+
+    <button class="flashcard ${state.revealed ? 'is-revealed' : ''}" data-action="flip" type="button">
+      <span>${state.revealed ? 'CÂU TRẢ LỜI' : 'TỰ NÓI TRƯỚC KHI LẬT'}</span>
+      <strong>${escapeHtml(state.revealed ? item.answer : item.question)}</strong>
+      ${state.revealed && item.owner ? `<small>${escapeHtml(item.owner)} trả lời chính</small>` : ''}
+      ${state.revealed && item.mistake ? `<em>Dễ nhầm: ${escapeHtml(item.mistake)}</em>` : ''}
+      <i>Bấm thẻ hoặc phím Space để lật</i>
+    </button>
+
+    <nav class="deck-actions">
+      <button data-action="previous-card" type="button" ${state.cardIndex ? '' : 'disabled'}>← Câu trước</button>
+      <button data-action="next-card" type="button">
+        ${state.cardIndex === state.deck.length - 1 ? 'Hoàn thành' : 'Câu tiếp →'}
+      </button>
+    </nav>
+  `;
 }
 
-function bindFlowEvents() {
-  const flow = flowById(state.flowId);
-  const course = courseById(flow.courseId);
+app.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-action]');
+  if (!button) return;
+  const action = button.dataset.action;
 
-  app.querySelectorAll('[data-action="flow"]').forEach((button) => {
-    button.addEventListener('click', () => {
-      state.flowId = button.dataset.flowId;
-      state.milestoneId = null;
-      renderFlow();
-    });
-  });
-
-  app.querySelectorAll('[data-action="milestone"]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const opening = state.milestoneId !== button.dataset.milestoneId;
-      if (opening) openMilestone(button.dataset.milestoneId);
-      else {
-        state.milestoneId = null;
-        renderFlow();
-      }
-    });
-  });
-
-  app.querySelector('[data-action="close-detail"]')?.addEventListener('click', () => {
-    state.milestoneId = null;
-    renderFlow();
-  });
-
-  app.querySelector('[data-action="course"]')?.addEventListener('click', () => {
-    openCards(course.cardIds, course.title);
-  });
-  app.querySelector('[data-action="all-questions"]')?.addEventListener('click', () => {
-    openCards(flow.questionIds, `${flow.owner} · Câu phản biện`);
-  });
-  app.querySelector('[data-action="rehearse"]')?.addEventListener('click', () => {
-    openMilestone(milestonesOf(flow)[0]?.id);
-  });
-
-  const milestone = milestoneById(flow, state.milestoneId);
-  const milestones = milestonesOf(flow);
-  const milestoneIndex = milestones.findIndex((item) => item.id === milestone?.id);
-  app.querySelector('[data-action="previous-step"]')?.addEventListener('click', () => {
-    if (milestoneIndex > 0) openMilestone(milestones[milestoneIndex - 1].id);
-  });
-  app.querySelector('[data-action="next-step"]')?.addEventListener('click', () => {
-    if (milestoneIndex < milestones.length - 1) openMilestone(milestones[milestoneIndex + 1].id);
-    else {
-      state.milestoneId = null;
-      renderFlow();
-      app.querySelector('#flow-overview')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    }
-  });
-  app.querySelector('[data-action="study-step"]')?.addEventListener('click', () => {
-    openCards(cardIdsForMilestone(flow, milestone), milestone.title);
-  });
-  app.querySelector('[data-action="questions-step"]')?.addEventListener('click', () => {
-    openCards(questionIdsForMilestone(flow, milestone), `${milestone.title} · Câu phản biện`);
-  });
-}
-
-function bindDeckEvents() {
-  app.querySelectorAll('[data-action="flip"]').forEach((element) => {
-    element.addEventListener('click', () => {
-      state.revealed = !state.revealed;
-      if (!state.revealed) state.details.clear();
-      renderDeck();
-    });
-  });
-  app.querySelectorAll('[data-action="detail"]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const key = button.dataset.detail;
-      if (state.details.has(key)) state.details.delete(key);
-      else state.details.add(key);
-      renderDeck();
-    });
-  });
-  app.querySelector('[data-action="back"]')?.addEventListener('click', renderFlow);
-  app.querySelector('[data-action="previous"]')?.addEventListener('click', () => {
-    if (state.index === 0) return;
-    state.index -= 1;
-    resetCardFace();
-    renderDeck();
-  });
-  app.querySelector('[data-action="next"]')?.addEventListener('click', () => {
-    if (state.index >= activeCards().length - 1) return renderFlow();
-    state.index += 1;
-    resetCardFace();
-    renderDeck();
-  });
-  app.querySelector('[data-action="mastered"]')?.addEventListener('click', () => {
-    const card = activeCards()[state.index];
-    if (state.mastered.has(card.id)) state.mastered.delete(card.id);
-    else state.mastered.add(card.id);
-    renderDeck();
-  });
-}
-
-document.addEventListener('keydown', (event) => {
-  if (state.view === 'flow' && event.key === 'Escape' && state.milestoneId) {
-    state.milestoneId = null;
-    renderFlow();
-    return;
+  if (action === 'track') {
+    state.trackId = button.dataset.id;
+    state.lessonId = null;
+    renderMap();
   }
-  if (state.view !== 'deck') return;
-
-  if (event.code === 'Space' && document.activeElement?.tagName !== 'BUTTON') {
-    event.preventDefault();
+  if (action === 'lesson' && button.dataset.id) {
+    state.lessonId = button.dataset.id;
+    renderMap();
+    document.getElementById('lesson-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  if (action === 'close') {
+    state.lessonId = null;
+    renderMap();
+  }
+  if (action === 'start') {
+    state.lessonId = lessonsInTrack()[0]?.id || null;
+    renderMap();
+  }
+  if (action === 'cards-lesson') {
+    openDeck(
+      ALL_FLASHCARDS.filter((item) => item.lessonId === state.lessonId),
+      'TỰ KIỂM TRA',
+    );
+  }
+  if (action === 'jury-lesson') {
+    openDeck(
+      ALL_QUESTIONS.filter((item) => item.lessonId === state.lessonId),
+      'LUYỆN PHẢN BIỆN',
+    );
+  }
+  if (action === 'all-jury') {
+    const lessonIds = new Set(lessonsInTrack().map((item) => item.id));
+    openDeck(
+      ALL_QUESTIONS.filter((item) => lessonIds.has(item.lessonId)),
+      'CÂU HỎI GIÁM KHẢO',
+    );
+  }
+  if (action === 'back') renderMap();
+  if (action === 'flip') {
     state.revealed = !state.revealed;
-    if (!state.revealed) state.details.clear();
     renderDeck();
   }
-  if (event.key === 'ArrowRight') app.querySelector('[data-action="next"]')?.click();
-  if (event.key === 'ArrowLeft') app.querySelector('[data-action="previous"]')?.click();
-  if (event.key === 'Escape') renderFlow();
+  if (action === 'previous-card' && state.cardIndex > 0) {
+    state.cardIndex -= 1;
+    state.revealed = false;
+    renderDeck();
+  }
+  if (action === 'next-card') {
+    if (state.cardIndex === state.deck.length - 1) renderMap();
+    else {
+      state.cardIndex += 1;
+      state.revealed = false;
+      renderDeck();
+    }
+  }
 });
 
-validateCurriculum();
-renderFlow();
+document.addEventListener('keydown', (event) => {
+  if (state.view !== 'deck') return;
+  if (event.code === 'Space') {
+    event.preventDefault();
+    state.revealed = !state.revealed;
+    renderDeck();
+  }
+  if (event.key === 'ArrowRight') document.querySelector('[data-action="next-card"]')?.click();
+  if (event.key === 'ArrowLeft') document.querySelector('[data-action="previous-card"]')?.click();
+  if (event.key === 'Escape') renderMap();
+});
+
+renderMap();

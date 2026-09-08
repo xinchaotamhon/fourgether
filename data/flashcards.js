@@ -1,45 +1,481 @@
-// Nội dung học được đối chiếu với bản FurneeHome chốt. Tiến độ chỉ nằm trong bộ nhớ.
-const ref = (path, symbol) => ({ path, symbol });
-const card = (id, nodeId, prompt, answer, sourceRefs) => ({ id, nodeId, type: 'ý chính', prompt, modelAnswer: answer, explanation: 'Trình bày theo đầu vào → xử lý → đầu ra và nêu giới hạn của bước này.', misconception: 'Tên thư viện hoặc nút bấm không thay thế được business logic.', transfer: { prompt: 'Nếu bước này lỗi thì sao?', answer: 'Giữ dữ liệu hợp lệ, báo lỗi ngắn gọn và cho phép thử lại.' }, sourceRefs, status: 'verified' });
+const lines = (text) => text.split('|');
+const source = (path, symbol) => ({ path, symbol });
+const functionInfo = (name, path, symbol, purpose) => ({ name, path, symbol, purpose });
+const juryQuestion = (question, answer, owner) => ({ question, answer, owner });
+const flashcard = (question, answer, mistake, sources) => ({ question, answer, mistake, sources });
 
-const nodeRows = [
-  ['project', '', '00', 'FurneeHome', 'Mục tiêu → ảnh phòng đúng ngữ cảnh', 'coral', 'GỐC DỰ ÁN', []], ['journey', 'project', '01', 'Luồng người dùng', 'Home → sản phẩm → Studio → mẫu đã lưu', 'coral', 'LUỒNG 01', ['project']], ['home', 'journey', '01.1', 'Trang chủ Home', 'Giới thiệu · bắt đầu nhanh · điều hướng', 'coral', '', ['journey']], ['products', 'journey', '01.2', 'Tìm và lọc sản phẩm', 'Từ khóa · danh mục · chọn một món', 'gold', '', ['home']], ['studio', 'journey', '01.3', 'Room Studio', 'Một sản phẩm · placement 2D', 'violet', '', ['products']], ['placement', 'studio', '01.3.1', 'Đặt sản phẩm', 'Chọn · kéo · phóng/thu · lật', 'violet', '', ['studio']], ['result', 'journey', '01.4', 'Kết quả và lỗi', 'Canvas → ảnh xử lý → giữ scene', 'green', '', ['studio']], ['collection', 'journey', '01.5', 'Bộ sưu tập', 'Lưu · mở lại · chỉnh tiếp', 'orange', '', ['result']], ['auth', 'journey', '01.6', 'Tài khoản', 'Đăng ký · đăng nhập · quên mật khẩu OTP', 'rose', '', ['home']], ['profile', 'auth', '01.6.1', 'Hồ sơ cá nhân', 'Xem và cập nhật thông tin', 'rose', '', ['auth']], ['feedback', 'journey', '01.7', 'Phản hồi và báo cáo', 'Gửi góp ý · báo nội dung không phù hợp', 'gold', '', ['collection']],
-  ['frontend', 'project', '02', 'Frontend', 'Route · context · component · service', 'blue', 'LUỒNG 02', ['journey']], ['front-router', 'frontend', '02.1', 'Router và vùng quyền', 'Route · layout · AdminRoute', 'blue', '', ['frontend']], ['front-auth', 'frontend', '02.2', 'Auth state', 'Token · user · đăng nhập', 'rose', '', ['front-router']], ['front-products', 'frontend', '02.3', 'ProductContext', 'API trước · JSON fallback', 'blue', '', ['frontend']], ['front-room', 'frontend', '02.4', 'Room Studio state', 'Ảnh · placement · brief · generate', 'violet', '', ['studio', 'frontend']], ['front-collections', 'frontend', '02.5', 'CollectionContext', 'Lưu và mở lại mẫu', 'orange', '', ['collection', 'frontend']], ['front-profile', 'frontend', '02.6', 'Profile UI', 'Field được phép · cập nhật session', 'rose', '', ['front-auth']], ['front-feedback', 'frontend', '02.7', 'Feedback UI', 'Validate · gửi · trạng thái', 'gold', '', ['front-collections']], ['front-admin', 'frontend', '02.8', 'Admin UI', 'Sản phẩm · user · feedback', 'slate', '', ['front-router']],
-  ['backend', 'project', '03', 'Backend', 'Route → controller → model/service → response', 'green', 'LUỒNG 03', ['frontend']], ['back-auth', 'backend', '03.1', 'Auth API', 'JWT · bcrypt · forgot OTP', 'rose', '', ['front-auth', 'backend']], ['back-products', 'backend', '03.2', 'Product API', 'List · CRUD · ảnh', 'blue', '', ['front-products', 'backend']], ['back-preview', 'backend', '03.3', 'Room preview API', 'Validate → provider → response', 'violet', '', ['front-room', 'backend']], ['back-designs', 'backend', '03.4', 'RoomDesign API', 'Owner · listMine · mở lại', 'orange', '', ['collection', 'backend']], ['back-users', 'backend', '03.5', 'Quản trị user', 'Danh sách · khóa/mở · quyền', 'slate', '', ['back-auth']], ['back-feedback', 'backend', '03.6', 'Quản trị feedback', 'Danh sách · trạng thái · ghi chú', 'gold', '', ['back-users']], ['back-response', 'backend', '03.7', 'Response API', 'Status · message · data · lỗi', 'green', '', ['back-feedback']],
-  ['dataops', 'project', '04', 'Dữ liệu và vận hành', 'MongoDB · JSON fallback · gate', 'teal', 'LUỒNG 04', ['backend']], ['data-models', 'dataops', '04.1', 'MongoDB models', 'User · Product · RoomDesign · Feedback', 'teal', '', ['backend']], ['data-fallback', 'dataops', '04.2', 'API và fallback', 'API ưu tiên · JSON khi API chưa sẵn sàng', 'teal', '', ['data-models']], ['data-deploy', 'dataops', '04.3', 'Build và cấu hình', 'Frontend · backend · secret môi trường', 'slate', '', ['data-fallback']], ['defense', 'project', '05', 'Hiểu để bảo vệ', 'Business logic · boundary · bằng chứng', 'ink', 'LUỒNG 05', ['dataops']], ['defend-ai', 'defense', '05.1', 'Prompt và provider', 'Đúng sản phẩm · fallback có điều kiện', 'pink', '', ['back-preview']], ['defend-roles', 'defense', '05.2', 'Role và quyền', 'Customer · Admin · Superadmin', 'rose', '', ['back-auth', 'back-users']],
-];
-
-const sourceByNode = {
-  project: [ref('START_HERE.md', 'FurneeHome')], journey: [ref('client/src/router.jsx', 'router')], home: [ref('client/src/pages/HomePage.jsx', 'HomePage')], products: [ref('client/src/pages/ProductListPage.jsx', 'ProductListPage')], studio: [ref('client/src/pages/RoomStudioPage.jsx', 'RoomStudioPage')], placement: [ref('client/src/pages/RoomStudioPage.jsx', 'selectProduct')], result: [ref('client/src/utils/roomPreviewCanvas.js', 'createRoomPreviewImages')], collection: [ref('client/src/context/CollectionContext.jsx', 'saveRoomTemplate')], auth: [ref('client/src/components/auth/LoginModal.jsx', 'submit')], profile: [ref('client/src/context/AuthContext.jsx', 'saveSession')], feedback: [ref('client/src/services/apiClient.js', 'apiClient')], frontend: [ref('client/src/router.jsx', 'router')], 'front-router': [ref('client/src/router.jsx', 'AdminRoute')], 'front-auth': [ref('client/src/context/AuthContext.jsx', 'login')], 'front-products': [ref('client/src/context/ProductContext.jsx', 'fetchProducts')], 'front-room': [ref('client/src/pages/RoomStudioPage.jsx', 'RoomStudioPage')], 'front-collections': [ref('client/src/pages/CollectionPage.jsx', 'openDesign')], 'front-profile': [ref('client/src/context/AuthContext.jsx', 'saveSession')], 'front-feedback': [ref('client/src/services/apiClient.js', 'apiClient')], 'front-admin': [ref('client/src/pages/AdminPage.jsx', 'AdminPage')], backend: [ref('server/src/routes/index.js', 'router')], 'back-auth': [ref('server/src/controllers/authController.js', 'login')], 'back-products': [ref('server/src/controllers/productController.js', 'list')], 'back-preview': [ref('server/src/controllers/roomPreviewController.js', 'validate'), ref('server/src/controllers/roomPreviewController.js', 'create')], 'back-designs': [ref('server/src/controllers/roomDesignController.js', 'cleanDesignInput')], 'back-users': [ref('server/src/controllers/adminController.js', 'listUsers')], 'back-feedback': [ref('server/src/controllers/adminController.js', 'listFeedback')], 'back-response': [ref('server/src/controllers/productController.js', 'create')], dataops: [ref('README.md', 'MongoDB')], 'data-models': [ref('server/src/models/User.js', 'userSchema')], 'data-fallback': [ref('client/src/context/ProductContext.jsx', 'ProductProvider')], 'data-deploy': [ref('server/src/config/env.js', 'isProduction')], defense: [ref('START_HERE.md', 'bảo vệ')], 'defend-ai': [ref('server/src/services/cloudflareImageService.js', 'buildPrompt')], 'defend-roles': [ref('server/src/middleware/authMiddleware.js', 'requireAdmin')],
+export const PROJECT = {
+  name: 'FurneeHome',
+  promise: 'Mua nội thất trực tuyến và xem thử từ một đến ba sản phẩm trong ảnh phòng trước khi quyết định.',
+  audience: 'Sinh viên, học sinh, công nhân và gia đình phổ thông.',
+  wow: 'Phòng thử AI: chọn từ một đến ba sản phẩm, tải ảnh phòng, nhập vị trí và tạo ảnh.',
 };
-export const FLOW_NODES = nodeRows.map(([id, parent, order, label, shortLabel, tone, kicker, prerequisiteNodeIds]) => ({ id, ...(parent ? { parent } : {}), order, label, shortLabel, tone, kicker, prerequisiteNodeIds, description: shortLabel, lesson: `Học ${label} theo input → xử lý → output.` }));
 
-const corePrompts = { project: ['Mục tiêu FurneeHome là gì?', 'Xem trước một sản phẩm nội thất trên ảnh phòng thật bằng AI 2D; không phải hệ thống thanh toán hay dựng 3D.'], journey: ['Luồng người dùng bắt đầu và kết thúc ở đâu?', 'Home → tìm/lọc → chọn một sản phẩm → Room Studio → kết quả → đăng nhập để lưu mẫu.'], home: ['Trang chủ phải giúp người dùng làm gì?', 'Hiểu giá trị và đi nhanh tới danh sách sản phẩm hoặc Room Studio.'], products: ['Tìm sản phẩm xử lý thế nào?', 'ProductContext gọi API, lọc theo từ khóa/danh mục, rồi ProductCard chuyển đúng một món vào Studio.'], studio: ['Room Studio nhận input gì?', 'Ảnh phòng, đúng một sản phẩm, vị trí 2D và ba ghi chú: vị trí, điều không muốn, ghi chú khác.'], placement: ['Placement hoạt động ra sao?', 'Chọn món tạo placement; kéo, đổi kích thước và lật chỉ đổi scene. Chỉ bấm Tạo ảnh mới gọi API.'], result: ['Vì sao có Canvas trước ảnh xử lý?', 'Người dùng thấy bản ghép ngay; nếu provider lỗi, scene và bản ghép vẫn còn.'], collection: ['Lưu mẫu cần dữ liệu nào?', 'Ảnh phòng, ảnh kết quả, placement, product facts, brief và metadata để mở lại được.'], auth: ['Đăng ký và đăng nhập tạo gì?', 'Đăng ký trực tiếp sau validate; đăng nhập trả session. Quên mật khẩu dùng OTP email rồi đặt mật khẩu mới.'], profile: ['Hồ sơ cho sửa gì?', 'Chỉ họ tên và ảnh đại diện; email và role không sửa từ form này.'], feedback: ['Feedback và báo cáo tạo ra gì?', 'Một ticket có loại, mô tả và trạng thái để admin kiểm tra; không tự xóa dữ liệu gốc.'] };
-const genericPrompt = (node) => [`${node.label} xử lý điều gì?`, `${node.shortLabel}; dữ liệu đi qua boundary của lớp này và trả output cho bước kế tiếp.`];
-const core = FLOW_NODES.map((node) => { const [prompt, answer] = corePrompts[node.id] || genericPrompt(node); return card(`core-${node.id}`, node.id, prompt, answer, sourceByNode[node.id]); });
-const q = (id, nodeId, owner, likelihood, prompt, answer, sourceRefs) => ({ ...card(id, nodeId, prompt, answer, sourceRefs), type: 'giám khảo', owner, likelihood });
-export const DEFENSE_QUESTIONS = [
-  q('q-placement-one', 'placement', 'dung', 'cao', 'Vì sao bản cuối chỉ đặt một sản phẩm?', 'Giới hạn một món giúp identity, vị trí và kết quả dễ kiểm chứng trong buổi demo.', sourceByNode.placement), q('q-auth-direct', 'auth', 'dung', 'cao', 'Đăng ký khác quên mật khẩu thế nào?', 'Đăng ký tạo user sau validate; quên mật khẩu mới dùng OTP email và chỉ đổi mật khẩu sau OTP đúng.', [ref('client/src/components/auth/LoginModal.jsx', 'submit'), ref('server/src/controllers/authController.js', 'requestPasswordReset')]), q('q-feedback', 'feedback', 'dung', 'vừa', 'Báo nội dung không phù hợp có tự xóa không?', 'Không. Feedback tạo ticket để admin kiểm tra và cập nhật trạng thái.', sourceByNode.feedback), q('q-product-filter', 'products', 'trieu', 'cao', 'Tìm/lọc sản phẩm nằm ở đâu?', 'ProductContext lấy dữ liệu; ProductListPage lọc hiển thị; API vẫn là nguồn ưu tiên.', [ref('client/src/context/ProductContext.jsx', 'fetchProducts'), ref('client/src/pages/ProductListPage.jsx', 'ProductListPage')]), q('q-collection-open', 'collection', 'trieu', 'cao', 'Mở lại mẫu cần gì ngoài ảnh kết quả?', 'Cần placement, product facts và brief cùng ảnh phòng để tiếp tục chỉnh đúng món.', [ref('client/src/pages/CollectionPage.jsx', 'openDesign')]), q('q-admin-crud', 'front-admin', 'trieu', 'cao', 'Admin CRUD được bảo vệ ở đâu?', 'Frontend chỉ phản hồi UX; API bắt JWT và role trước controller Product.', [ref('server/src/middleware/authMiddleware.js', 'requireAdmin'), ref('server/src/controllers/productController.js', 'create')]), q('q-user-admin', 'back-users', 'phuc', 'cao', 'Admin user được trả những field nào?', 'Chỉ field quản trị cần thiết; password và OTP không nằm trong response.', sourceByNode['back-users']), q('q-role', 'defend-roles', 'phuc', 'cao', 'Customer, Admin, Superadmin khác nhau thế nào?', 'Customer dùng chức năng cá nhân; Admin quản lý sản phẩm/feedback; Superadmin mới đổi role hoặc trạng thái tài khoản.', [ref('server/src/middleware/authMiddleware.js', 'requireAdmin'), ref('server/src/middleware/authMiddleware.js', 'requireSuperadmin')]), q('q-response', 'back-response', 'phuc', 'vừa', 'Vì sao response cần status, message, data?', 'Frontend xử lý thành công, validate, 401/403 và lỗi server theo cùng một hợp đồng.', sourceByNode['back-response']), q('q-ai-input', 'back-preview', 'hiep', 'cao', 'Backend validate request tạo ảnh để làm gì?', 'Chặn ảnh, placement, prompt hoặc kích thước sai trước provider; không tin dữ liệu từ client.', sourceByNode['back-preview']), q('q-provider', 'defend-ai', 'hiep', 'cao', 'Fallback provider có ý nghĩa gì?', 'Thử provider kế tiếp khi provider trước lỗi hoặc thiếu cấu hình; không dùng fallback để vượt policy.', [ref('server/src/services/cloudflareImageService.js', 'generateRoomPreview')]), q('q-result-error', 'result', 'hiep', 'vừa', 'Provider lỗi thì scene có mất không?', 'Không. Giữ Canvas/scene, báo lỗi an toàn và cho người dùng thử lại.', [ref('client/src/utils/roomPreviewCanvas.js', 'compositeRoomPreview')]),
-];
-export const FLASHCARDS = [...core, ...DEFENSE_QUESTIONS];
-export const DEFENSE_QUESTION_IDS = DEFENSE_QUESTIONS.map((item) => item.id);
-const coreIdsFor = (nodeIds) => core.filter((item) => nodeIds.includes(item.nodeId)).map((item) => item.id);
-const questionIdsFor = (member) => DEFENSE_QUESTIONS.filter((item) => item.owner === member).map((item) => item.id);
-
-export const MEMBER_PATHS = [
-  { id: 'hiep', name: 'Hiệp', difficultyRank: 1, presentationOrder: 4, difficultyLabel: 'Khó nhất', focus: 'Room Studio, validation, prompt, provider và kết quả.', nodeIds: ['studio', 'placement', 'result', 'front-room', 'back-preview', 'defend-ai'], presentation: ['Một sản phẩm đi từ scene tới ảnh xử lý.', 'Validate, prompt, provider fallback và composite.', 'Nói đúng lỗi và giới hạn.'], handoff: 'Scene đã sẵn sàng; Hiệp giải thích pipeline ảnh và kết quả.', questions: { high: ['q-ai-input', 'q-provider'], medium: ['q-result-error'] } },
-  { id: 'phuc', name: 'Phúc', difficultyRank: 2, presentationOrder: 3, difficultyLabel: 'Khó thứ hai', focus: 'Auth, API, MongoDB, ownership và quyền quản trị.', nodeIds: ['auth', 'profile', 'frontend', 'front-auth', 'backend', 'back-auth', 'back-products', 'back-designs', 'back-users', 'back-feedback', 'back-response', 'dataops', 'data-models', 'data-fallback', 'data-deploy', 'defend-roles'], presentation: ['Register/login và forgot password OTP.', 'Route → controller → model/MongoDB → response.', 'Customer/Admin/Superadmin và ownership.'], handoff: 'Frontend đã gửi request; Phúc chứng minh API kiểm tra và lưu đúng quyền.', questions: { high: ['q-user-admin', 'q-role'], medium: ['q-response'] } },
-  { id: 'trieu', name: 'Triều', difficultyRank: 3, presentationOrder: 2, difficultyLabel: 'Khó thứ ba', focus: 'Home, catalog, Room Studio UI, Collection và Admin UI.', nodeIds: ['home', 'products', 'studio', 'placement', 'collection', 'feedback', 'frontend', 'front-router', 'front-products', 'front-room', 'front-collections', 'front-profile', 'front-feedback', 'front-admin'], presentation: ['Home dẫn vào tìm/lọc và chọn một món.', 'UI giữ scene, không tự gọi ảnh khi kéo.', 'Collection, feedback và ba bảng Admin.'], handoff: 'UI đã tạo input có cấu trúc; Phúc tiếp tục với API và quyền.', questions: { high: ['q-product-filter', 'q-collection-open', 'q-admin-crud'], medium: [] } },
-  { id: 'dung', name: 'Dũng', difficultyRank: 4, presentationOrder: 1, difficultyLabel: 'Dễ nhất', focus: 'Bài toán, Home, hành trình người dùng và giá trị demo.', nodeIds: ['project', 'journey', 'home', 'products', 'studio', 'placement', 'result', 'collection', 'auth', 'profile', 'feedback', 'defense'], presentation: ['Nêu người dùng và vấn đề cần xem trước nội thất.', 'Demo Home → lọc → một món → Studio → kết quả.', 'Chốt lưu mẫu, tài khoản, feedback và giới hạn.'], handoff: 'Người dùng đã có input và mục tiêu; Triều tiếp tục bằng UI.', questions: { high: ['q-placement-one', 'q-auth-direct'], medium: ['q-feedback'] } },
+export const MEMBERS = [
+  { id: 'hiep', name: 'Hiệp', difficulty: 1, label: 'Khó nhất', mission: 'Kiến trúc, dữ liệu, bảo mật, Phòng thử AI và triển khai.', lessonIds: ['architecture', 'ai-room', 'quality'], handoff: 'Chốt điểm wow, giới hạn thật và bằng chứng kiểm thử.' },
+  { id: 'phuc', name: 'Phúc', difficulty: 2, label: 'Khó thứ hai', mission: 'Tài khoản, OTP, đơn hàng, MongoDB và quyền quản trị.', lessonIds: ['account', 'order', 'admin'], handoff: 'Bàn giao cho Hiệp giải thích pipeline AI và vận hành.' },
+  { id: 'trieu', name: 'Triều', difficulty: 3, label: 'Khó thứ ba', mission: 'Chi tiết sản phẩm, giỏ hàng và trải nghiệm sau mua.', lessonIds: ['product', 'cart', 'after-sale'], handoff: 'Bàn giao cho Phúc khi giỏ đã sẵn sàng đặt hàng.' },
+  { id: 'dung', name: 'Dũng', difficulty: 4, label: 'Dễ nhất', mission: 'Bài toán, người dùng, trang chủ và hành trình tìm sản phẩm.', lessonIds: ['pitch', 'journey', 'catalog'], handoff: 'Bàn giao cho Triều khi khách đã tìm được sản phẩm.' },
 ];
 
-export const COURSES = [{ id: 'furneehome-flow', kind: 'common', title: 'Học FurneeHome theo luồng', description: 'Từ input đến output và bằng chứng.', nodeIds: FLOW_NODES.map((node) => node.id), cardIds: core.map((item) => item.id) }, { id: 'defense-bank', kind: 'defense', title: 'Câu hỏi giám khảo', description: 'Câu hỏi nghiệp vụ và boundary.', cardIds: DEFENSE_QUESTION_IDS }, ...MEMBER_PATHS.map((member) => ({ id: `member-${member.id}`, kind: 'member', memberId: member.id, title: `Lộ trình của ${member.name}`, description: member.focus, cardIds: [...coreIdsFor(member.nodeIds), ...questionIdsFor(member.id)] }))];
-const milestone = (id, title, summary, nodeIds, presenter = '') => ({ id, title, summary, nodeIds, presenter });
-const phase = (id, title, summary, milestones) => ({ id, title, summary, milestones });
-export const LEARNING_FLOWS = [{ id: 'common', tab: 'Toàn dự án', owner: 'Cả nhóm', courseId: 'furneehome-flow', title: 'Luồng trình bày và demo cuối', summary: 'Một đường đi chung Input → Process → Output.', questionIds: DEFENSE_QUESTION_IDS, phases: [phase('input', 'Đầu vào', 'Dũng mở bài và tạo mục tiêu demo.', [milestone('common-dung', 'Dũng · Bài toán và input', 'Home, tìm/lọc, một sản phẩm, tài khoản và feedback.', ['project', 'journey', 'home', 'products', 'auth', 'profile', 'feedback'], 'Dũng')]), phase('process', 'Xử lý', 'Triều, Phúc và Hiệp nối UI, API và ảnh.', [milestone('common-trieu', 'Triều · UI và scene', 'Chọn một món, placement và Collection.', ['studio', 'placement', 'frontend', 'front-router', 'front-products', 'front-room', 'front-collections', 'front-profile', 'front-feedback', 'front-admin'], 'Triều'), milestone('common-phuc', 'Phúc · API, quyền và MongoDB', 'Auth, CRUD, user, feedback, RoomDesign và response.', ['front-auth', 'backend', 'back-auth', 'back-products', 'back-designs', 'back-users', 'back-feedback', 'back-response', 'dataops', 'data-models', 'data-fallback', 'data-deploy', 'defend-roles'], 'Phúc'), milestone('common-hiep', 'Hiệp · tạo ảnh', 'Validate, prompt, provider và composite.', ['back-preview', 'defend-ai'], 'Hiệp')]), phase('output', 'Đầu ra', 'Hiệp chốt ảnh, lưu mẫu, test và giới hạn.', [milestone('common-close', 'Hiệp · Kết quả và bằng chứng', 'Đối chiếu ảnh, giữ lỗi, chạy gate và kết luận.', ['result', 'collection', 'defense'], 'Hiệp')])] }, ...['dung', 'trieu', 'phuc', 'hiep'].map((memberId) => MEMBER_PATHS.find((member) => member.id === memberId)).map((member) => ({ id: member.id, tab: member.name, owner: member.name, memberId: member.id, courseId: `member-${member.id}`, title: `Track hoàn chỉnh của ${member.name}`, summary: member.focus, questionIds: [...member.questions.high, ...member.questions.medium], phases: [phase('input', 'Đầu vào', 'Xác định dữ liệu và mục tiêu của track.', [milestone(`${member.id}-input`, `${member.name} · Input`, member.presentation[0], member.nodeIds.slice(0, Math.max(1, Math.ceil(member.nodeIds.length / 3))), member.name)]), phase('process', 'Xử lý', 'Theo các hàm và boundary của phần phụ trách.', [milestone(`${member.id}-process`, `${member.name} · Process`, member.presentation[1], member.nodeIds.slice(Math.max(1, Math.ceil(member.nodeIds.length / 3)), Math.max(2, Math.ceil(member.nodeIds.length * 2 / 3))), member.name)]), phase('output', 'Đầu ra', 'Chốt output, demo dự phòng và Q&A.', [milestone(`${member.id}-output`, `${member.name} · Output`, member.presentation[2], member.nodeIds.slice(Math.max(2, Math.ceil(member.nodeIds.length * 2 / 3))), member.name)])] }))];
+export const LESSONS = [
+  {
+    id: 'pitch',
+    number: '01',
+    owner: 'Dũng',
+    title: 'Bài toán và giá trị',
+    route: '/',
+    summary: 'Vì sao FurneeHome tồn tại và điểm wow phục vụ việc mua hàng thế nào?',
+    keyPoints: lines('Khách phổ thông khó hình dung món nội thất có hợp phòng thật hay không.|FurneeHome gom xem sản phẩm, giá, tồn kho, giỏ, đặt COD và theo dõi đơn vào một nơi.|Điểm khác biệt là tạo ảnh thử từ một đến ba sản phẩm trong phòng trước khi mua.|AI hỗ trợ quyết định; nghiệp vụ chính vẫn là bán hàng.'),
+    sequence: lines('Nhu cầu thật|Chọn nội thất|Mua hàng|Theo dõi đơn|Ảnh thử AI'),
+    rules: lines('Giá và tồn kho thuộc FurneeHome.|Thanh toán chốt là COD.|Không gọi ảnh AI là bản vẽ kỹ thuật chính xác.'),
+    demo: {
+      actions: lines('Mở Trang chủ.|Chỉ hai lối vào: Sản phẩm và Phòng thử.|Nói khách hàng mục tiêu trong một câu.'),
+      expected: 'Giám khảo hiểu đề tài trước khi nghe tên công nghệ.',
+      fallback: 'Nếu ảnh hero chậm, dùng tiêu đề và hai nút điều hướng để tiếp tục.',
+    },
+    functions: [
+      functionInfo('HomePage', 'client/src/pages/HomePage.jsx', 'HomePage', 'Ghép lời giới thiệu, sản phẩm nổi bật và lối vào Phòng thử.'),
+      functionInfo('router', 'client/src/router.jsx', 'createBrowserRouter', 'Ánh xạ URL tới các trang.'),
+    ],
+    questions: [
+      juryQuestion('Điểm mới của đề tài là gì?', 'Website bán nội thất hoàn chỉnh có thêm bước xem thử sản phẩm trong ảnh phòng bằng AI.', 'Dũng'),
+      juryQuestion('AI có phải chức năng chính không?', 'Bán hàng là nghiệp vụ chính; AI là điểm wow hỗ trợ quyết định.', 'Hiệp'),
+      juryQuestion('Vì sao chọn COD?', 'COD đủ cho đặt và quản lý đơn mà không phụ thuộc cổng thanh toán.', 'Dũng'),
+    ],
+    cards: [
+      flashcard('Nói FurneeHome trong một câu.', 'Website bán nội thất có giá, giỏ hàng, đơn COD và ảnh thử AI.', 'Kể thư viện nhưng không nói giá trị.', [source('README.md', 'FurneeHome')]),
+      flashcard('Khách hàng chính là ai?', 'Người học, công nhân và gia đình phổ thông cần nội thất dễ chọn, giá rõ.', 'Nói chung chung là mọi người.', [source('START_HERE.md', 'Mục tiêu')]),
+    ],
+  },
+  {
+    id: 'journey',
+    number: '02',
+    owner: 'Dũng',
+    title: 'Bức tranh toàn hệ thống',
+    route: '/',
+    summary: 'Một giao dịch hoàn chỉnh và trách nhiệm của từng vai trò.',
+    keyPoints: lines('Khách xem catalog mà chưa cần đăng nhập.|Khách mở chi tiết, chọn số lượng và thêm giỏ.|Checkout yêu cầu đăng nhập, địa chỉ và COD.|Backend đọc lại giá và tồn kho rồi tạo đơn MongoDB.|Admin xử lý đơn; superadmin quản lý quyền.|Phòng thử AI hỗ trợ trước quyết định mua.'),
+    sequence: lines('Khám phá|Chọn món|Giỏ hàng|Đặt COD|Admin xử lý|Khách nhận hàng'),
+    rules: lines('Customer chỉ xem đơn của mình.|Admin vận hành cửa hàng.|Superadmin mới thay đổi quyền.|Backend quyết định quyền cuối cùng.'),
+    demo: {
+      actions: lines('Đi nhanh Home → Sản phẩm → Chi tiết → Giỏ.|Chỉ đường dẫn Đơn hàng và Quản trị.|Mở Phòng thử để nối điểm wow.'),
+      expected: 'Các trang tạo thành một câu chuyện thống nhất.',
+      fallback: 'Nếu chưa đăng nhập, dừng ở giỏ và giải thích checkout sẽ yêu cầu đăng nhập.',
+    },
+    functions: [
+      functionInfo('Header', 'client/src/components/layout/Header.jsx', 'Header', 'Điều hướng theo vai trò và hiển thị số lượng giỏ.'),
+      functionInfo('MainLayout', 'client/src/components/layout/MainLayout.jsx', 'MainLayout', 'Giữ Header, trang, Footer và modal dùng chung.'),
+    ],
+    questions: [
+      juryQuestion('Có những vai trò nào?', 'Customer, admin và superadmin.', 'Dũng'),
+      juryQuestion('Vì sao checkout yêu cầu đăng nhập?', 'Để gắn đơn đúng chủ và bảo vệ lịch sử/hủy đơn.', 'Phúc'),
+      juryQuestion('Ẩn nút admin đã đủ an toàn?', 'Chưa; backend vẫn kiểm tra JWT và role.', 'Phúc'),
+    ],
+    cards: [
+      flashcard('Hành trình mua hàng là gì?', 'Khám phá → chọn món → giỏ → đặt COD → xử lý → nhận hàng.', 'Học từng trang nhưng không nối được câu chuyện.', [source('client/src/router.jsx', 'router')]),
+      flashcard('Ai quyết định quyền admin?', 'Middleware backend dựa trên user đã xác thực.', 'Cho rằng ẩn menu là đủ.', [source('server/src/middleware/authMiddleware.js', 'requireAdmin')]),
+    ],
+  },
+  {
+    id: 'catalog',
+    number: '03',
+    owner: 'Dũng',
+    title: 'Tìm và chọn sản phẩm',
+    route: '/products',
+    summary: 'Từ danh sách lớn đến món phù hợp, còn hàng và có giá rõ.',
+    keyPoints: lines('ProductContext tải danh sách và giữ loading, error, data.|Khách tìm tên, lọc danh mục và sắp xếp giá.|Card hiển thị ảnh, tên, giá, tồn kho và hành động chính.|Sản phẩm ngừng bán hoặc hết hàng không được checkout.'),
+    sequence: lines('API sản phẩm|Tìm và lọc|Danh sách|Mở chi tiết'),
+    rules: lines('Giá là số VND hợp lệ.|MongoDB là nguồn giao dịch.|JSON chỉ dùng seed hoặc demo.'),
+    demo: {
+      actions: lines('Nhập từ khóa.|Chọn danh mục.|Đổi sắp xếp giá.|Mở một món còn hàng.'),
+      expected: 'Danh sách và trang chi tiết giữ đúng sản phẩm.',
+      fallback: 'API lỗi thì báo rõ và không checkout bằng dữ liệu cũ.',
+    },
+    functions: [
+      functionInfo('fetchProducts', 'client/src/context/ProductContext.jsx', 'fetchProducts', 'Tải sản phẩm và cập nhật trạng thái.'),
+      functionInfo('list', 'server/src/controllers/productController.js', 'async function list', 'Đọc sản phẩm đang bán từ MongoDB.'),
+      functionInfo('ProductCard', 'client/src/components/product/ProductCard.jsx', 'ProductCard', 'Trình bày thông tin mua hàng của một món.'),
+    ],
+    questions: [
+      juryQuestion('Tìm kiếm nằm ở đâu?', 'Bản nhỏ lọc ở React; khi dữ liệu lớn sẽ đưa search và pagination về API.', 'Dũng'),
+      juryQuestion('Hết hàng xử lý sao?', 'UI khóa mua; cart và order vẫn kiểm tra lại stock.', 'Phúc'),
+      juryQuestion('MongoDB lỗi có checkout bằng JSON?', 'Không; giao dịch cần một nguồn giá và kho duy nhất.', 'Hiệp'),
+    ],
+    cards: [
+      flashcard('Card sản phẩm tối thiểu có gì?', 'Ảnh, tên, giá, tồn kho và hành động xem/mua.', 'Đưa thông số AI lên trước thông tin mua.', [source('client/src/components/product/ProductCard.jsx', 'ProductCard')]),
+      flashcard('Vì sao backend vẫn kiểm tra stock?', 'Request có thể bị sửa hoặc stock đã đổi.', 'Tin trạng thái UI cũ.', [source('server/src/controllers/orderController.js', 'createOrder')]),
+    ],
+  },
+  {
+    id: 'product',
+    number: '04',
+    owner: 'Triều',
+    title: 'Chi tiết và quyết định mua',
+    route: '/products/:id',
+    summary: 'Khách hiểu món đồ, chọn số lượng và cho vào giỏ.',
+    keyPoints: lines('Trang hiển thị ảnh, mô tả, giá, kích thước và tồn kho.|Số lượng từ 1 đến stock.|Thêm giỏ chưa tạo đơn và chưa giảm kho.|Yêu thích, đánh giá và báo xấu có mục đích khác nhau.'),
+    sequence: lines('Xem thông tin|Chọn số lượng|Thêm giỏ|Tiếp tục mua'),
+    rules: lines('Inactive hoặc không tồn tại trả 404.|Giá client không phải giá chốt.|Đánh giá gắn user và product.'),
+    demo: {
+      actions: lines('Mở chi tiết.|Tăng hoặc giảm số lượng.|Thêm giỏ.|Xem đánh giá hoặc báo nội dung.'),
+      expected: 'Badge giỏ tăng và đúng món xuất hiện.',
+      fallback: 'Ảnh lỗi thì hiện ảnh thay thế nhưng tên, giá và nút vẫn dùng được.',
+    },
+    functions: [
+      functionInfo('ProductDetailPage', 'client/src/pages/ProductDetailPage.jsx', 'ProductDetailPage', 'Trình bày quyết định mua.'),
+      functionInfo('addToCart', 'client/src/context/CartContext.jsx', 'addToCart', 'Thêm hoặc cộng số lượng món đã có.'),
+      functionInfo('getByProduct', 'server/src/controllers/reviewController.js', 'getByProduct', 'Đọc đánh giá đúng sản phẩm.'),
+    ],
+    questions: [
+      juryQuestion('Thêm giỏ có giảm stock?', 'Không; stock chỉ đổi khi backend tạo đơn.', 'Triều'),
+      juryQuestion('Giá đổi sau khi đặt?', 'Order giữ snapshot nên đơn cũ không đổi.', 'Phúc'),
+      juryQuestion('Review khác report?', 'Review chia sẻ trải nghiệm; report tạo ticket cho admin.', 'Triều'),
+    ],
+    cards: [
+      flashcard('Thêm giỏ khác đặt hàng?', 'Giỏ còn sửa; order là giao dịch đã lưu MongoDB.', 'Nói thêm giỏ đã bán được hàng.', [source('server/src/models/Cart.js', 'cartSchema'), source('server/src/models/Order.js', 'orderSchema')]),
+      flashcard('Vì sao order giữ snapshot?', 'Để lịch sử không đổi khi admin sửa sản phẩm.', 'Dùng giá Product hiện tại cho đơn cũ.', [source('server/src/models/Order.js', 'orderItemSchema')]),
+    ],
+  },
+  {
+    id: 'cart',
+    number: '05',
+    owner: 'Triều',
+    title: 'Giỏ hàng',
+    route: '/cart',
+    summary: 'Gom lựa chọn, sửa số lượng và chuẩn bị checkout.',
+    keyPoints: lines('Khách có giỏ tạm để không bị ép đăng nhập sớm.|Mỗi dòng có món, đơn giá, số lượng và thành tiền.|Có tăng, giảm, xóa món và xóa toàn bộ.|Khi đăng nhập, giỏ được đồng bộ MongoDB.|Tổng ở Cart chỉ để hiển thị; createOrder tính lại.'),
+    sequence: lines('Thêm món|Sửa số lượng|Kiểm tra stock|Tạm tính|Sang checkout'),
+    rules: lines('Không vượt stock.|Giỏ rỗng dẫn về mua hàng.|Không tin giá cũ khi tạo đơn.'),
+    demo: {
+      actions: lines('Thêm hai món.|Tăng một món.|Xóa món còn lại.|Tải lại trang.|Bấm Đặt hàng.'),
+      expected: 'Số lượng, tạm tính và badge luôn khớp.',
+      fallback: 'Đồng bộ lỗi thì giữ lựa chọn và báo chưa thể checkout.',
+    },
+    functions: [
+      functionInfo('CartProvider', 'client/src/context/CartContext.jsx', 'CartProvider', 'Giữ items và thao tác giỏ toàn ứng dụng.'),
+      functionInfo('addToCart', 'server/src/controllers/cartController.js', 'addToCart', 'Kiểm tra sản phẩm và cập nhật giỏ user.'),
+      functionInfo('updateQuantity', 'server/src/controllers/cartController.js', 'updateQuantity', 'Đổi số lượng hoặc xóa món.'),
+    ],
+    questions: [
+      juryQuestion('Vì sao giỏ khách dùng localStorage?', 'Đó là lựa chọn tạm; giao dịch vẫn qua backend.', 'Triều'),
+      juryQuestion('Đăng nhập máy khác thì sao?', 'Giỏ MongoDB có thể tải lại; giỏ khách chỉ ở máy cũ.', 'Phúc'),
+      juryQuestion('Client gửi giá 1 đồng thì sao?', 'Order controller bỏ qua và đọc Product.price.', 'Phúc'),
+    ],
+    cards: [
+      flashcard('Giỏ có phải đơn?', 'Không; giỏ còn sửa, đơn là snapshot.', 'Dùng một model cho cả hai vòng đời.', [source('server/src/models/Cart.js', 'cartSchema')]),
+      flashcard('Ai tính tổng cuối?', 'Backend trong createOrder.', 'Tin totalPrice từ React.', [source('server/src/controllers/orderController.js', 'createOrder')]),
+    ],
+  },
+  {
+    id: 'account',
+    number: '06',
+    owner: 'Phúc',
+    title: 'Tài khoản, hồ sơ và OTP',
+    route: '/profile',
+    summary: 'Xác định đúng người trước khi xem dữ liệu riêng hoặc đặt hàng.',
+    keyPoints: lines('Register validate rồi hash password.|Login so sánh password và trả JWT.|Hồ sơ chỉ sửa field cho phép, không sửa role.|Quên mật khẩu tạo OTP ngắn hạn và chỉ lưu hash.|Production không trả OTP ra giao diện.'),
+    sequence: lines('Đăng ký|Đăng nhập|JWT|Trang riêng|Đặt lại mật khẩu'),
+    rules: lines('Password dùng bcrypt.|OTP hết hạn và dùng một lần.|Route riêng nạp lại user active.|Response không làm lộ email tồn tại.'),
+    demo: {
+      actions: lines('Đăng ký.|Đăng xuất rồi đăng nhập.|Sửa hồ sơ.|Thử quên mật khẩu.'),
+      expected: 'Phiên đúng và mật khẩu cũ không dùng được sau reset.',
+      fallback: 'Local dùng devOtp; production dùng SMTP và tắt devOtp.',
+    },
+    functions: [
+      functionInfo('register', 'server/src/controllers/authController.js', 'async function register', 'Validate, hash và tạo customer.'),
+      functionInfo('login', 'server/src/controllers/authController.js', 'async function login', 'Xác minh rồi tạo JWT.'),
+      functionInfo('requestPasswordReset', 'server/src/controllers/authController.js', 'requestPasswordReset', 'Tạo OTP, hash, hạn dùng và gửi email.'),
+      functionInfo('authenticate', 'server/src/middleware/authMiddleware.js', 'authenticate', 'Xác minh JWT và nạp user.'),
+    ],
+    questions: [
+      juryQuestion('JWT có mật khẩu?', 'Không; chỉ có định danh cần thiết và chữ ký.', 'Phúc'),
+      juryQuestion('Xem database có thấy OTP?', 'Chỉ thấy hash và hạn dùng.', 'Phúc'),
+      juryQuestion('User gửi role admin trong profile?', 'Controller bỏ field đó; chỉ superadmin đổi role.', 'Phúc'),
+    ],
+    cards: [
+      flashcard('Password kiểm tra thế nào?', 'bcrypt.compare so input với hash.', 'So hai chuỗi plaintext.', [source('server/src/controllers/authController.js', 'bcrypt.compare')]),
+      flashcard('OTP local khác production?', 'Local có thể hiện devOtp; production gửi SMTP và không trả OTP.', 'Bật devOtp trên Render.', [source('server/src/controllers/authController.js', 'devOtp')]),
+    ],
+  },
+  {
+    id: 'order',
+    number: '07',
+    owner: 'Phúc',
+    title: 'Checkout và vòng đời đơn',
+    route: '/checkout',
+    summary: 'Biến giỏ thành giao dịch COD đúng giá, đúng kho và truy vết được.',
+    keyPoints: lines('Checkout cần người nhận, điện thoại và địa chỉ.|Client gửi productId và quantity, không quyết định giá.|Server đọc Product, kiểm tra stock và chốt snapshot.|Stock giảm có điều kiện; lỗi giữa chừng phải rollback.|Tạo Order xong mới xóa giỏ.|Hủy đúng giai đoạn và hoàn kho đúng một lần.'),
+    sequence: lines('Nhận địa chỉ|Đọc giá thật|Giữ kho|Tạo snapshot|Xóa giỏ|Theo dõi trạng thái'),
+    rules: lines('Không tin price, total hoặc owner từ client.|Đơn cũ không đổi theo Product.|Trạng thái đi theo bước hợp lệ.|Không hoàn kho hai lần.'),
+    demo: {
+      actions: lines('Điền checkout COD.|Mở Đơn của tôi.|Admin đổi trạng thái.|Customer tải lại.|Thử hủy đơn Pending.'),
+      expected: 'Có mã đơn, tổng đúng, stock đúng và trạng thái đồng bộ.',
+      fallback: 'Hết hàng thì giữ giỏ và báo đúng món cần sửa.',
+    },
+    functions: [
+      functionInfo('createOrder', 'server/src/controllers/orderController.js', 'createOrder', 'Đọc giá thật, giữ stock và tạo snapshot.'),
+      functionInfo('getMyOrders', 'server/src/controllers/orderController.js', 'getMyOrders', 'Chỉ trả đơn của user.'),
+      functionInfo('cancelMyOrder', 'server/src/controllers/orderController.js', 'cancelMyOrder', 'Hủy đúng quyền và hoàn stock một lần.'),
+      functionInfo('updateOrderStatus', 'server/src/controllers/orderController.js', 'updateOrderStatus', 'Admin chuyển trạng thái hợp lệ.'),
+    ],
+    questions: [
+      juryQuestion('Hai khách mua món cuối cùng?', 'Giảm stock với điều kiện stock đủ; chỉ request hợp lệ thành công.', 'Phúc'),
+      juryQuestion('Món sau lỗi khi món trước đã giảm?', 'Controller rollback phần đã giảm.', 'Hiệp'),
+      juryQuestion('COD sao có paymentStatus?', 'Để biết chưa thu hay đã thu khi giao.', 'Phúc'),
+      juryQuestion('Ai được hủy?', 'Chủ đơn ở giai đoạn cho phép; admin theo quyền.', 'Phúc'),
+    ],
+    cards: [
+      flashcard('Order nhận gì từ client?', 'ProductId, quantity và địa chỉ; không nhận giá làm sự thật.', 'Tin totalAmount từ CheckoutPage.', [source('server/src/controllers/orderController.js', 'createOrder')]),
+      flashcard('Snapshot gồm gì?', 'Id, tên, ảnh, đơn giá và số lượng.', 'Chỉ lưu productId.', [source('server/src/models/Order.js', 'orderItemSchema')]),
+      flashcard('Hủy bảo vệ gì?', 'Đúng chủ, đúng trạng thái, hoàn kho một lần.', 'Mỗi lần Cancelled lại cộng stock.', [source('server/src/controllers/orderController.js', 'cancelMyOrder')]),
+    ],
+  },
+  {
+    id: 'after-sale',
+    number: '08',
+    owner: 'Triều',
+    title: 'Sau mua và chăm sóc khách',
+    route: '/feedback',
+    summary: 'Theo dõi đơn, đánh giá, góp ý và báo nội dung để được liên hệ xử lý.',
+    keyPoints: lines('Order history lấy MongoDB theo user.|Review gắn trải nghiệm sản phẩm đã mua.|Liên hệ hoặc báo nội dung tạo phiếu để admin xử lý.|Profile lưu thông tin cá nhân được phép.|Khách nhận phản hồi theo đúng trạng thái ticket.'),
+    sequence: lines('Xem đơn|Nhận hàng|Đánh giá|Gửi phản hồi|Admin xử lý'),
+    rules: lines('Không xem đơn người khác bằng sửa URL.|Order, Review và Feedback là ba dữ liệu có mục đích khác nhau.|Report không tự xóa sản phẩm.'),
+    demo: {
+      actions: lines('Mở lịch sử và một đơn.|Gửi review hoặc liên hệ.|Báo nội dung nếu cần.|Đăng nhập admin để thấy ticket liên hệ.'),
+      expected: 'Dữ liệu đúng sau tải lại và đúng chủ sở hữu.',
+      fallback: 'Chưa có đơn Delivered thì dùng dữ liệu seed để demo validation.',
+    },
+    functions: [
+      functionInfo('OrderHistoryPage', 'client/src/pages/OrderHistoryPage.jsx', 'OrderHistoryPage', 'Hiển thị đơn của user.'),
+      functionInfo('createReview', 'server/src/controllers/reviewController.js', 'createReview', 'Kiểm tra đánh giá và cập nhật điểm.'),
+      functionInfo('create', 'server/src/controllers/feedbackController.js', 'async function create', 'Tạo góp ý hoặc báo nội dung.'),
+    ],
+    questions: [
+      juryQuestion('Review khác liên hệ?', 'Review chia sẻ trải nghiệm sản phẩm; liên hệ tạo ticket để admin phản hồi.', 'Triều'),
+      juryQuestion('Report xóa ngay?', 'Không; admin phải xác minh.', 'Triều'),
+      juryQuestion('Đánh giá khi chưa mua?', 'Bản chốt yêu cầu đã nhận hàng để tăng độ tin cậy.', 'Phúc'),
+    ],
+    cards: [
+      flashcard('Order history lưu ở đâu?', 'MongoDB và lọc theo user.', 'Lưu lịch sử chỉ trong trình duyệt.', [source('server/src/models/Order.js', 'orderSchema')]),
+      flashcard('Report tạo gì?', 'Feedback ticket có loại, nội dung và trạng thái.', 'Đồng nhất report với delete.', [source('server/src/models/Feedback.js', 'feedbackSchema')]),
+    ],
+  },
+  {
+    id: 'admin',
+    number: '09',
+    owner: 'Phúc',
+    title: 'Quản trị cửa hàng',
+    route: '/admin',
+    summary: 'Quản lý sản phẩm, kho, đơn, người dùng và phản hồi.',
+    keyPoints: lines('Admin quản lý Sản phẩm: giá, tồn kho, ảnh và thông tin AI.|Admin quản lý Khách hàng: xem trạng thái và xử lý tài khoản theo quyền.|Admin quản lý Đơn hàng: lọc và cập nhật trạng thái.|Admin quản lý Liên hệ: đọc và phản hồi ticket.|Superadmin có thêm quyền quản trị admin cấp dưới: cấp hoặc thu hồi quyền, khóa hoặc mở tài khoản.|Mọi thay đổi lưu MongoDB rồi giao diện tải lại.'),
+    sequence: lines('Sản phẩm và kho|Khách hàng|Đơn hàng|Liên hệ|Admin cấp dưới'),
+    rules: lines('Không hard-code mật khẩu admin.|Backend kiểm tra role.|Ưu tiên isActive thay vì xóa món đã bán.'),
+    demo: {
+      actions: lines('Sửa giá hoặc stock sản phẩm.|Kiểm tra danh sách Khách hàng.|Đổi trạng thái Đơn hàng.|Xử lý Liên hệ.|Dùng superadmin quản trị admin cấp dưới.'),
+      expected: 'Customer thấy dữ liệu mới; gọi API admin bằng customer nhận 403.',
+      fallback: 'Seed sẵn sản phẩm, đơn và feedback.',
+    },
+    functions: [
+      functionInfo('productData', 'server/src/controllers/productController.js', 'productData', 'Làm sạch field create hoặc update.'),
+      functionInfo('updateOrderStatus', 'server/src/controllers/orderController.js', 'updateOrderStatus', 'Chuyển trạng thái đơn.'),
+      functionInfo('updateUser', 'server/src/controllers/adminController.js', 'updateUser', 'Thay role và trạng thái đúng quyền.'),
+      functionInfo('requireSuperadmin', 'server/src/middleware/authMiddleware.js', 'requireSuperadmin', 'Chặn tài khoản không phải quyền cao nhất.'),
+    ],
+    questions: [
+      juryQuestion('Vì sao không xóa sản phẩm đã bán?', 'isActive ngừng bán mà không phá lịch sử.', 'Phúc'),
+      juryQuestion('Admin tự cấp superadmin?', 'Không; superadmin mới được quản trị admin cấp dưới, còn backend luôn chặn tự nâng quyền.', 'Phúc'),
+      juryQuestion('Đổi giá có đổi đơn cũ?', 'Không vì order giữ snapshot.', 'Phúc'),
+    ],
+    cards: [
+      flashcard('CRUD sản phẩm gồm gì?', 'Thêm, xem, sửa và ngừng bán hoặc xóa theo quy tắc.', 'Form mở được đã gọi là CRUD xong.', [source('server/src/controllers/productController.js', 'module.exports')]),
+      flashcard('401 khác 403?', '401 chưa xác thực; 403 thiếu quyền.', 'Dùng một lỗi cho mọi trường hợp.', [source('server/src/middleware/authMiddleware.js', 'requireAdmin')]),
+    ],
+  },
+  {
+    id: 'architecture',
+    number: '10',
+    owner: 'Hiệp',
+    title: 'Code, API và MongoDB',
+    route: '/api/health',
+    summary: 'Một cú bấm đi qua hàm nào và dữ liệu được giữ ở đâu?',
+    keyPoints: lines('Page nhận thao tác và gọi context hoặc service.|Service gửi HTTP tới Express route.|Route chạy middleware rồi controller.|Controller áp dụng business rule và gọi model.|MongoDB lưu rồi response quay lại React.|Model chính gồm User, Product, Cart, Order, Review, Feedback và RoomDesign.'),
+    sequence: lines('Page|Context hoặc Service|Route|Middleware|Controller|Model và MongoDB|Response'),
+    rules: lines('Route định tuyến, controller xử lý, model định nghĩa dữ liệu.|Backend là trust boundary.|Secret chỉ ở biến môi trường backend.'),
+    demo: {
+      actions: lines('Tạo một order.|Mở Network xem request và response.|Mở route, createOrder và Order model.'),
+      expected: 'Kể được đường đi cụ thể thay vì chỉ đọc folder.',
+      fallback: 'Dùng bài học và mở ba hàm đã ghi nếu DevTools khó nhìn.',
+    },
+    functions: [
+      functionInfo('apiClient', 'client/src/services/apiClient.js', 'apiClient', 'Đặt base URL và gắn token.'),
+      functionInfo('authenticate', 'server/src/middleware/authMiddleware.js', 'authenticate', 'Xác minh JWT.'),
+      functionInfo('errorHandler', 'server/src/middleware/errorHandler.js', 'errorHandler', 'Chuẩn hóa lỗi.'),
+      functionInfo('orderSchema', 'server/src/models/Order.js', 'orderSchema', 'Định nghĩa đơn hàng.'),
+    ],
+    questions: [
+      juryQuestion('Business logic ở đâu?', 'Controller và middleware giữ quy tắc; schema giữ ràng buộc.', 'Hiệp'),
+      juryQuestion('Vì sao cần service frontend?', 'Để page tập trung UI và request dùng chung token/base URL.', 'Hiệp'),
+      juryQuestion('Lưu ảnh base64 lâu dài?', 'Đủ demo nhỏ; production nên lưu storage và URL.', 'Hiệp'),
+    ],
+    cards: [
+      flashcard('Kể đường createOrder.', 'CheckoutPage → orderService → route → authenticate → createOrder → models → response.', 'Chỉ đọc folder.', [source('client/src/services/orderService.js', 'createOrder'), source('server/src/controllers/orderController.js', 'createOrder')]),
+      flashcard('Frontend validate rồi cần backend?', 'Có; client có thể bị sửa hoặc bỏ qua.', 'Tin form React là bảo mật.', [source('server/src/controllers/orderController.js', 'createOrder')]),
+    ],
+  },
+  {
+    id: 'ai-room',
+    number: '11',
+    owner: 'Hiệp',
+    title: 'Điểm wow: Phòng thử AI',
+    route: '/room-studio',
+    summary: 'Ba bước rõ ràng: chọn từ một đến ba sản phẩm, tải ảnh phòng, nhập vị trí từng món rồi tạo ảnh.',
+    keyPoints: lines('Bước 1 cho khách tích từ một đến ba sản phẩm trong danh sách và có thể quay lại chọn tiếp.|Bước 2 nhận ảnh phòng JPG, PNG hoặc WebP dưới giới hạn kích thước.|Bước 3 tạo một ô vị trí riêng cho từng sản phẩm rồi mới gửi request.|Client chuyển ảnh sản phẩm URL thành data URL trước khi gọi API.|Giao diện hiển thị loading, kết quả và nút so sánh ảnh gốc.|Provider lỗi thì preview dự phòng giữ luồng demo.'),
+    sequence: lines('Chọn 1–3 sản phẩm|Tải ảnh phòng|Nhập vị trí từng món|Tạo ảnh|Provider xử lý|So sánh'),
+    rules: lines('Giới hạn tối đa ba sản phẩm và không gửi món thiếu ảnh tham chiếu.|Không kéo, đặt góc, xoay hoặc dựng 3D.|Prompt giữ kiến trúc phòng, đúng sản phẩm và vị trí người dùng ghi.|API key chỉ ở backend.'),
+    demo: {
+      actions: lines('Ở Bước 1 mở danh sách sản phẩm.|Tích một đến ba món rồi quay lại Phòng thử.|Ở Bước 2 tải ảnh phòng.|Ở Bước 3 ghi vị trí từng món và bấm Tạo ảnh.|So sánh ảnh gốc và kết quả.'),
+      expected: 'Ảnh mới hiện đúng vùng và có trạng thái tải rõ.',
+      fallback: 'Dùng preview hoặc ảnh seed và nói rõ dịch vụ ngoài đang lỗi.',
+    },
+    functions: [
+      functionInfo('generate', 'client/src/pages/RoomStudioPage.jsx', 'const generate', 'Kiểm tra input, gọi API và đặt kết quả.'),
+      functionInfo('createRoomPreview', 'client/src/services/roomPreviewService.js', 'createRoomPreview', 'Gửi ảnh và sản phẩm tới backend.'),
+      functionInfo('create', 'server/src/controllers/roomPreviewController.js', 'async function create', 'Kiểm tra rồi gọi dịch vụ AI.'),
+      functionInfo('generateRoomPreview', 'server/src/services/cloudflareImageService.js', 'generateRoomPreview', 'Thử provider và trả ảnh thành công.'),
+    ],
+    questions: [
+      juryQuestion('Vì sao bỏ đặt góc?', 'Không tăng độ tin cậy đủ nhiều nhưng làm code và demo phức tạp.', 'Hiệp'),
+      juryQuestion('AI đúng kích thước tuyệt đối?', 'Không; kết quả dùng để hình dung.', 'Hiệp'),
+      juryQuestion('Hết quota?', 'Thử provider kế tiếp; tất cả lỗi thì giữ preview.', 'Hiệp'),
+      juryQuestion('Vì sao không gọi AI từ React?', 'Sẽ lộ key và bỏ qua kiểm soát backend.', 'Hiệp'),
+    ],
+    cards: [
+      flashcard('Ba bước Phòng thử?', 'Chọn 1–3 sản phẩm → tải ảnh phòng → ghi vị trí từng món → Tạo ảnh và so sánh.', 'Thêm lại 3D, kéo hoặc ép đặt góc.', [source('client/src/pages/RoomStudioPage.jsx', 'const generate')]),
+      flashcard('Provider lỗi thì giao diện làm gì?', 'Giữ ảnh phòng, bỏ kết quả lỗi và báo người dùng thử lại; không dùng ảnh gốc giả làm ảnh AI.', 'Hiển thị ảnh gốc như một kết quả AI thành công.', [source('client/src/pages/RoomStudioPage.jsx', "setResultImage('')")]),
+      flashcard('Ảnh AI có ý nghĩa gì?', 'Gợi ý trực quan trước mua.', 'Gọi là mô phỏng chính xác.', [source('server/src/services/cloudflareImageService.js', 'buildPrompt')]),
+    ],
+  },
+  {
+    id: 'quality',
+    number: '12',
+    owner: 'Hiệp',
+    title: 'Kiểm thử, triển khai và cứu demo',
+    route: '/api/health',
+    summary: 'Chứng minh hệ thống chạy và biết xử lý khi dịch vụ ngoài lỗi.',
+    keyPoints: lines('Client build tĩnh lên Cloudflare Pages.|Express chạy Render và MongoDB Atlas giữ dữ liệu chung.|Secret đặt trong Environment Variables.|Smoke thử customer, admin, stock, order, quyền và AI.|Seed sẵn tài khoản, sản phẩm, đơn và ảnh phòng.'),
+    sequence: lines('Build|Backend check|Seed|Smoke customer|Smoke admin|Smoke AI|Phương án dự phòng'),
+    rules: lines('Không commit .env.|Build pass chưa chứng minh business logic.|Cloudflare dùng client/dist và _redirects.'),
+    demo: {
+      actions: lines('Mở health.|Tạo order customer.|Admin xử lý.|Tạo ảnh hoặc fallback.|Tải lại URL sâu.'),
+      expected: 'Local và deploy có cùng hành vi chính.',
+      fallback: 'Chuẩn bị ảnh hoặc video nhưng vẫn giải thích code thật.',
+    },
+    functions: [
+      functionInfo('connectDatabase', 'server/src/config/db.js', 'async function connectDatabase', 'Kết nối MongoDB trước khi mở server.'),
+      functionInfo('seed', 'server/src/utils/seedData.js', 'seed', 'Tạo dữ liệu demo.'),
+      functionInfo('errorHandler', 'server/src/middleware/errorHandler.js', 'errorHandler', 'Trả lỗi an toàn.'),
+    ],
+    questions: [
+      juryQuestion('Cloudflare chạy Express?', 'Không; Pages chạy client, Render chạy server.', 'Hiệp'),
+      juryQuestion('Secret ở đâu?', 'Biến môi trường hoặc .env local đã gitignore.', 'Hiệp'),
+      juryQuestion('AI lỗi lúc bảo vệ?', 'Dùng fallback và vẫn chứng minh request/validation.', 'Hiệp'),
+      juryQuestion('Build pass đủ chưa?', 'Chưa; phải smoke với MongoDB, role, stock và order.', 'Hiệp'),
+    ],
+    cards: [
+      flashcard('Ba nơi triển khai?', 'Cloudflare Pages, Render và MongoDB Atlas.', 'Nói Cloudflare chạy toàn bộ.', [source('README.md', 'Cloudflare')]),
+      flashcard('Smoke tối thiểu?', 'Health → mua → order → admin xử lý → AI hoặc fallback → tải lại.', 'Chỉ mở Trang chủ.', [source('START_HERE.md', 'Kiểm tra')]),
+    ],
+  },
+];
 
-const demo = (id, nodeIds, action, expected, fallback) => ({ id, nodeIds, action, expected, fallback });
-export const PRESENTATION_DEMOS = [demo('home', ['home', 'project'], 'Mở Home và nói bài toán.', 'Người nghe hiểu mục tiêu.', 'Dùng ảnh chụp Home.'), demo('search', ['products', 'front-products'], 'Gõ từ khóa và chọn danh mục.', 'Danh sách được lọc.', 'Dùng dữ liệu đã tải sẵn.'), demo('select', ['products', 'studio'], 'Chọn một ProductCard.', 'Một món đi vào Studio.', 'Dùng product đã chuẩn bị.'), demo('placement', ['placement', 'front-room'], 'Kéo, phóng/thu và lật món.', 'Scene đổi ngay, chưa gọi AI.', 'Mở scene mẫu.'), demo('generate', ['back-preview', 'defend-ai'], 'Bấm Tạo ảnh.', 'Validate, prompt, provider và response chạy.', 'Giữ Canvas và báo lỗi.'), demo('result', ['result'], 'Đối chiếu Canvas và ảnh xử lý.', 'Không mất scene khi lỗi.', 'Mở ảnh kết quả dự phòng.'), demo('collection', ['collection', 'front-collections'], 'Lưu rồi mở lại mẫu.', 'Placement và facts còn nguyên.', 'Mở mẫu đã lưu trước.'), demo('auth', ['auth', 'front-auth'], 'Đăng nhập hoặc thử quên mật khẩu OTP.', 'Session đúng và reset có bước xác minh.', 'Dùng tài khoản chuẩn bị sẵn.'), demo('feedback', ['feedback', 'front-feedback', 'back-feedback'], 'Gửi feedback/báo cáo ngắn.', 'Ticket có trạng thái tiếp nhận.', 'Dùng ticket mẫu.'), demo('admin', ['front-admin', 'back-products', 'back-users', 'back-feedback'], 'Mở Admin và xem ba nhóm bảng.', 'CRUD sản phẩm, user và feedback đúng role.', 'Dùng seed/mock đã chuẩn bị.'), demo('data', ['dataops', 'data-models', 'data-fallback'], 'Tải lại catalog hoặc kiểm tra MongoDB.', 'API ưu tiên, JSON là fallback.', 'Mở JSON fallback.'), demo('gate', ['defense', 'data-deploy'], 'Chạy smoke test và nêu boundary.', 'Có bằng chứng deterministic.', 'Dùng log test đã lưu.')];
+// Các sơ đồ này là đường đi để kể chuyện trong buổi bảo vệ; mỗi node mở về
+// chặng học có đầy đủ ý chính, hàm/route và câu hỏi phản biện.
+export const SEQUENCE_FLOWS = [
+  {
+    id: 'purchase',
+    title: 'Khách mua hàng',
+    summary: 'Từ lúc khám phá đến khi đơn COD được theo dõi.',
+    nodes: [
+      ['Mở trang chủ', 'pitch', '/'],
+      ['Tìm sản phẩm', 'catalog', '/products'],
+      ['Xem chi tiết', 'product', '/products/:id'],
+      ['Thêm vào giỏ', 'cart', '/cart'],
+      ['Đăng nhập', 'account', '/profile'],
+      ['Đặt đơn COD', 'order', '/checkout'],
+      ['Theo dõi đơn', 'after-sale', '/orders'],
+    ],
+  },
+  {
+    id: 'account',
+    title: 'Đăng ký và xác thực tài khoản',
+    summary: 'Tạo tài khoản an toàn, đăng nhập và khôi phục mật khẩu.',
+    nodes: [
+      ['Đăng ký email', 'account', '/profile'],
+      ['Xác minh OTP', 'account', '/profile'],
+      ['Tạo mật khẩu', 'account', '/profile'],
+      ['Đăng nhập', 'account', '/profile'],
+      ['Quên mật khẩu', 'account', '/profile'],
+      ['Đặt lại bằng OTP', 'account', '/profile'],
+    ],
+  },
+  {
+    id: 'room-studio',
+    title: 'Room Studio 3 bước',
+    summary: 'Chọn 1–3 sản phẩm, tải ảnh phòng, khai báo vị trí rồi tạo ảnh.',
+    nodes: [
+      ['Bước 1 · Chọn 1–3 sản phẩm', 'ai-room', '/products'],
+      ['Bước 2 · Tải ảnh phòng', 'ai-room', '/room-studio'],
+      ['Bước 3 · Nhập vị trí từng món', 'ai-room', '/room-studio'],
+      ['Tạo ảnh và so sánh', 'ai-room', '/room-studio'],
+    ],
+  },
+  {
+    id: 'contact',
+    title: 'Liên hệ, báo xấu và bình luận',
+    summary: 'Khách gửi review hoặc ticket; admin tiếp nhận và xử lý.',
+    nodes: [
+      ['Mở Liên hệ', 'after-sale', '/feedback'],
+      ['Gửi góp ý', 'after-sale', '/feedback'],
+      ['Báo nội dung xấu', 'after-sale', '/feedback'],
+      ['Bình luận / đánh giá', 'after-sale', '/products/:id'],
+      ['Admin phản hồi', 'admin', '/admin'],
+    ],
+  },
+  {
+    id: 'admin',
+    title: 'Admin quản trị cửa hàng',
+    summary: 'Một admin vận hành bốn khu vực nghiệp vụ bằng quyền thật.',
+    nodes: [
+      ['Quản lý Sản phẩm', 'admin', '/admin'],
+      ['Quản lý Khách hàng', 'admin', '/admin'],
+      ['Quản lý Đơn hàng', 'admin', '/admin/orders'],
+      ['Quản lý Liên hệ', 'admin', '/admin'],
+    ],
+  },
+  {
+    id: 'superadmin',
+    title: 'Superadmin quản trị admin',
+    summary: 'Quyền cao nhất quản trị admin cấp dưới và trạng thái tài khoản.',
+    nodes: [
+      ['Xem danh sách admin', 'admin', '/admin'],
+      ['Cấp hoặc thu hồi quyền', 'admin', '/admin'],
+      ['Khóa hoặc mở tài khoản', 'admin', '/admin'],
+      ['Backend kiểm tra Superadmin', 'admin', '/admin'],
+    ],
+  },
+].map((flow) => ({
+  ...flow,
+  nodes: flow.nodes.map(([label, lessonId, route], index) => ({ label, lessonId, route, number: String(index + 1).padStart(2, '0') })),
+}));
 
-const fn = (name, symbol, path, nodeIds, purpose, input, output) => ({ name, symbol, path, nodeIds, purpose, input, output });
-export const IMPORTANT_FUNCTIONS = [fn('LoginModal submit', 'submit', 'client/src/components/auth/LoginModal.jsx', ['auth', 'front-auth'], 'Gửi login/register/reset form.', 'Form input', 'Auth response'), fn('AuthContext login', 'login', 'client/src/context/AuthContext.jsx', ['auth', 'front-auth'], 'Đăng nhập và cập nhật session.', 'Credentials', 'User/session'), fn('AuthContext register', 'register', 'client/src/context/AuthContext.jsx', ['auth', 'front-auth'], 'Hoàn tất đăng ký account.', 'Profile', 'User/session'), fn('AuthContext updateProfile', 'saveSession', 'client/src/context/AuthContext.jsx', ['profile', 'front-profile'], 'Cập nhật user trong session sau API.', 'Updated user', 'Session state'), fn('authController register', 'register', 'server/src/controllers/authController.js', ['back-auth'], 'Tạo account sau validate.', 'Register body', 'User response'), fn('authController login', 'login', 'server/src/controllers/authController.js', ['back-auth'], 'So password và trả JWT.', 'Credentials', 'JWT/user'), fn('authController requestPasswordReset', 'requestPasswordReset', 'server/src/controllers/authController.js', ['auth', 'back-auth'], 'Tạo OTP reset gửi email.', 'Email', 'Reset OTP'), fn('authController resetPassword', 'resetPassword', 'server/src/controllers/authController.js', ['back-auth'], 'Đổi password sau OTP hợp lệ.', 'OTP + password', 'Success response'), fn('authController hashOtp', 'hashOtp', 'server/src/controllers/authController.js', ['back-auth'], 'Hash OTP trước khi lưu.', 'OTP', 'Hash'), fn('RoomStudioPage selectProduct', 'selectProduct', 'client/src/pages/RoomStudioPage.jsx', ['studio', 'placement'], 'Tạo placement một sản phẩm.', 'Product', 'Placement'), fn('Room preview service createRoomPreview', 'createRoomPreview', 'client/src/services/roomPreviewService.js', ['front-room', 'back-preview'], 'Gọi API tạo ảnh.', 'Scene payload', 'Preview response'), fn('CollectionContext saveRoomTemplate', 'saveRoomTemplate', 'client/src/context/CollectionContext.jsx', ['collection'], 'Lưu scene và ảnh.', 'Design payload', 'Saved design'), fn('createRoomPreviewImages', 'createRoomPreviewImages', 'client/src/utils/roomPreviewCanvas.js', ['result', 'front-room'], 'Tạo Canvas/guide/mask.', 'Room + placement', 'Image data URLs'), fn('compositeRoomPreview', 'compositeRoomPreview', 'client/src/utils/roomPreviewCanvas.js', ['result'], 'Ghép ảnh xử lý vào vùng scene.', 'Room + result + mask', 'Composite'), fn('roomPreviewController validate', 'validate', 'server/src/controllers/roomPreviewController.js', ['back-preview'], 'Kiểm tra request.', 'Body', 'Valid input/error'), fn('roomPreviewController create', 'create', 'server/src/controllers/roomPreviewController.js', ['back-preview'], 'Điều phối image service.', 'Validated body', 'API response'), fn('image service buildPrompt', 'buildPrompt', 'server/src/services/cloudflareImageService.js', ['defend-ai'], 'Tạo prompt đúng product/scene.', 'Facts + placement', 'Prompt'), fn('image service providerList', 'providerList', 'server/src/services/cloudflareImageService.js', ['defend-ai'], 'Lọc provider có cấu hình.', 'Environment', 'Candidates'), fn('image service generateRoomPreview', 'generateRoomPreview', 'server/src/services/cloudflareImageService.js', ['defend-ai', 'back-preview'], 'Gọi provider và fallback hợp lệ.', 'Prompt + images', 'Result/error'), fn('ProductContext fetchProducts', 'fetchProducts', 'client/src/context/ProductContext.jsx', ['products', 'front-products'], 'Tải catalog API/fallback.', 'Search/filter', 'Products'), fn('productController productData', 'productData', 'server/src/controllers/productController.js', ['back-products'], 'Chuẩn hóa dữ liệu product.', 'Product body', 'Clean data'), fn('productController list', 'list', 'server/src/controllers/productController.js', ['back-products'], 'Trả catalog.', 'Query', 'Product list'), fn('productController create', 'create', 'server/src/controllers/productController.js', ['back-products'], 'Tạo product.', 'Admin body', 'Product'), fn('productController update', 'update', 'server/src/controllers/productController.js', ['back-products'], 'Sửa product.', 'Id + fields', 'Product'), fn('productController remove', 'remove', 'server/src/controllers/productController.js', ['back-products'], 'Xóa product.', 'Id', 'Response'), fn('productController addImage', 'addImage', 'server/src/controllers/productController.js', ['back-products'], 'Thêm ảnh hợp lệ.', 'Image data', 'Product'), fn('middleware authenticate', 'authenticate', 'server/src/middleware/authMiddleware.js', ['back-auth'], 'Xác thực JWT và user active.', 'Bearer token', 'req.user/error'), fn('middleware requireAdmin', 'requireAdmin', 'server/src/middleware/authMiddleware.js', ['defend-roles'], 'Chặn non-admin.', 'req.user', 'Next/403'), fn('middleware requireSuperadmin', 'requireSuperadmin', 'server/src/middleware/authMiddleware.js', ['defend-roles', 'back-users'], 'Boundary cho đổi role/trạng thái.', 'req.user', 'Next/403'), fn('adminController listUsers', 'listUsers', 'server/src/controllers/adminController.js', ['back-users'], 'Liệt kê user an toàn.', 'Admin request', 'User DTOs'), fn('adminController updateUser', 'updateUser', 'server/src/controllers/adminController.js', ['back-users'], 'Cập nhật user theo policy.', 'User id + change', 'User response'), fn('adminController listFeedback', 'listFeedback', 'server/src/controllers/adminController.js', ['back-feedback'], 'Liệt kê feedback cho admin.', 'Admin request', 'Feedback DTOs'), fn('adminController updateFeedback', 'updateFeedback', 'server/src/controllers/adminController.js', ['back-feedback'], 'Cập nhật trạng thái feedback.', 'Feedback id + change', 'Feedback response'), fn('feedbackController create', 'create', 'server/src/controllers/feedbackController.js', ['feedback'], 'Nhận ticket feedback.', 'Feedback body', 'Ticket response'), fn('userController getMe', 'getMe', 'server/src/controllers/userController.js', ['profile'], 'Lấy user hiện tại.', 'JWT', 'User'), fn('userController updateMe', 'updateMe', 'server/src/controllers/userController.js', ['profile'], 'Cập nhật hồ sơ qua API.', 'User data', 'Session'), fn('roomDesignController cleanDesignInput', 'cleanDesignInput', 'server/src/controllers/roomDesignController.js', ['back-designs'], 'Lọc field và giới hạn payload.', 'Design body', 'Clean design'), fn('roomDesignController listMine', 'listMine', 'server/src/controllers/roomDesignController.js', ['back-designs'], 'Liệt kê mẫu của user.', 'req.user', 'Design list'), fn('roomDesignController getMine', 'getMine', 'server/src/controllers/roomDesignController.js', ['back-designs'], 'Lấy mẫu thuộc user.', 'Id + owner', 'Design'), fn('roomDesignController create', 'create', 'server/src/controllers/roomDesignController.js', ['back-designs'], 'Lưu RoomDesign.', 'Clean design', 'Design'), fn('roomDesignController update', 'update', 'server/src/controllers/roomDesignController.js', ['back-designs'], 'Sửa mẫu thuộc owner.', 'Id + changes', 'Design'), fn('roomDesignController remove', 'remove', 'server/src/controllers/roomDesignController.js', ['back-designs'], 'Xóa mẫu thuộc owner.', 'Id', 'Response')];
+export const TRACKS = [
+  { id: 'common', tab: 'Toàn dự án', name: 'Câu chuyện FurneeHome', owner: 'Cả nhóm', description: 'Đi từ bài toán đến giao dịch, quản trị, AI và triển khai.', lessonIds: LESSONS.map((item) => item.id) },
+  ...['dung', 'trieu', 'phuc', 'hiep'].map((id) => {
+    const member = MEMBERS.find((item) => item.id === id);
+    return { id, tab: member.name, name: `Phần của ${member.name}`, owner: member.name, description: member.mission, lessonIds: member.lessonIds };
+  }),
+];
+
+export const ALL_FLASHCARDS = LESSONS.flatMap((lesson) => lesson.cards.map((item, index) => ({ ...item, id: `${lesson.id}-card-${index + 1}`, lessonId: lesson.id })));
+export const ALL_QUESTIONS = LESSONS.flatMap((lesson) => lesson.questions.map((item, index) => ({ ...item, id: `${lesson.id}-jury-${index + 1}`, lessonId: lesson.id })));
